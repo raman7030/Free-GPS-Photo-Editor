@@ -667,6 +667,7 @@ export default function App() {
         onUpdateLocation={editingPhotoId ? handleUpdateStampSettings : handleUpdateLocation}
         isEditingPhoto={Boolean(editingPhotoId)}
         onApplyToPhoto={handleApplyStampToPhoto}
+        onOpenEditLocation={() => setIsEditLocationOpen(true)}
       />
 
       {/* 3. Settings Sheet */}
