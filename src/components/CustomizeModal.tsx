@@ -100,9 +100,9 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-5 animate-fade-in overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-5 animate-fade-in overflow-y-auto overscroll-y-contain">
       <div 
-        className="w-full max-w-xl md:max-w-4xl lg:max-w-5xl bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden"
+        className="w-full max-w-xl md:max-w-4xl lg:max-w-5xl bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -135,7 +135,7 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
         </div>
 
         {/* Main responsive 2-column (tablet) or stacked (mobile) layout */}
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-4 my-2.5 min-h-0">
+        <div className="flex flex-col md:flex-row gap-4 my-2.5">
           {/* Left Column (Sticky Preview on Tablet, top on Mobile) */}
           <div className="md:w-5/12 flex flex-col gap-2 shrink-0">
             <div className="p-3 sm:p-4 rounded-2xl bg-black/60 border border-neutral-800/80">
@@ -154,7 +154,7 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
           </div>
 
           {/* Right Column: Category Tabs & Content Controls */}
-          <div className="md:w-7/12 flex flex-col min-h-0 flex-1">
+          <div className="md:w-7/12 flex flex-col flex-1 min-w-0">
             {/* Category Tabs */}
             <div aria-label="Stamp customization sections" role="tablist" className="flex w-full max-w-full items-center gap-1.5 p-1 bg-neutral-950 rounded-2xl border border-neutral-800/80 mb-3 shrink-0 overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x whitespace-nowrap scrollbar-thin scrollbar-thumb-neutral-600 scrollbar-track-neutral-900">
               {[
@@ -185,8 +185,8 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
               })}
             </div>
 
-            {/* Tab Content Panel (Scrollable) */}
-            <div className="flex-1 overflow-y-auto pr-1 space-y-4 text-left">
+            {/* Tab content participates in the whole modal's vertical scroll */}
+            <div className="space-y-4 text-left">
           {/* TAB 1: LAYOUT & SIZES */}
           {activeTab === 'layout' && (
             <div className="space-y-4">
