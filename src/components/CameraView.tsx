@@ -888,6 +888,37 @@ export const CameraView: React.FC<CameraViewProps> = ({
                 </button>
               </div>
 
+              {/* Zoom presets moved into Options to keep the live camera preview clear */}
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-zinc-900/80 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Gauge className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-semibold text-zinc-200">Camera Zoom</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {[1.0, 2.0, 3.0].map((level) => {
+                    const active = Math.abs(zoomLevel - level) < 0.2;
+                    return (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => {
+                          applyDeviceZoom(level);
+                          resetAutoHideTimer();
+                        }}
+                        className={`min-w-10 h-8 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          active
+                            ? 'bg-amber-400 text-black shadow-md'
+                            : 'bg-black/40 text-zinc-300 hover:bg-white/10 hover:text-white'
+                        }`}
+                        aria-label={`Set camera zoom to ${level.toFixed(0)}x`}
+                      >
+                        {level.toFixed(0)}×
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Group 2: Geotag & Studio Features (Violet / Blue / Emerald / Purple) */}
               <div className="grid grid-cols-4 gap-2">
                 {/* Templates - Violet */}
@@ -1336,31 +1367,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
 
       {/* 3. BOTTOM CONTROLS & ZOOM (FLOATING OVER CAMERA FEED TO MAXIMIZE VISIBLE SCREEN) */}
       <div className="absolute bottom-0 inset-x-0 z-30 pointer-events-none flex flex-col items-center">
-        {/* Floating Single-Thumb Zoom Selector */}
-        {cameraActive && !importedImage && (
-          <div className="pointer-events-auto mb-2 flex justify-center">
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-xl border border-white/15 shadow-xl">
-              {[1.0, 2.0, 3.0].map((level) => {
-                const active = Math.abs(zoomLevel - level) < 0.2;
-                return (
-                  <button
-                    key={level}
-                    type="button"
-                    onClick={() => applyDeviceZoom(level)}
-                    className={`w-7 h-6 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
-                      active
-                        ? 'bg-amber-400 text-black shadow-md'
-                        : 'text-zinc-300 hover:text-white'
-                    }`}
-                  >
-                    {level.toFixed(0)}×
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* 4. BOTTOM CONTROLS DOCK: LEFT = RECENT | CENTER = SHUTTER BUTTON | RIGHT = IMPORT */}
         <div className="pointer-events-auto w-full pb-2 sm:pb-3 pt-2 px-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-center justify-between max-w-md sm:max-w-xl mx-auto">
           {/* LEFT: RECENT CLICKED IMAGE */}
