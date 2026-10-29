@@ -1,11 +1,8 @@
-<div align="center">
-
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-
-  <h1>Built with AI Studio</h2>
-
-  <p>The fastest path from prompt to production with Gemini.</p>
-
-  <a href="https://aistudio.google.com/apps">Start building</a>
-
-</div>
+This is Totally Free App for Employees and workers who go for Field Visits 
+Now you can Edit GPS Coordinates in App
+Click Back Dated and Future Dated Images 
+Chose Location on Map or Pick any Location 
+Multiple Templates to choose 
+May have bugs Just Tested on My Device working Fine 
+Fully Open Project Free for Everyone 
+Need Any Support Always Ready to Help

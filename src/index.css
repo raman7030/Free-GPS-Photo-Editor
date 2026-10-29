@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'SF UI Text';
+  src: url('/fonts/sf_ui_text.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SF UI Text Semibold';
+  src: url('/fonts/sf_ui_text_semibold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SF Display Medium';
+  src: url('/fonts/sfdisplay_medium.TTF') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Rubik';
+  src: url('/fonts/rubik_regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Rubik Medium';
+  src: url('/fonts/rubik_medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+/* Custom styles for Leaflet map in stamp and map picker */
+.leaflet-container {
+  font-family: 'SF UI Text', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #1a1a1a !important;
+}
+
+.stamp-map .leaflet-control-zoom,
+.stamp-map .leaflet-control-attribution {
+  display: none !important;
+}
+
+/* Fix Leaflet DivIcon default square box */
+.leaflet-div-icon.custom-map-picker-pin {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}

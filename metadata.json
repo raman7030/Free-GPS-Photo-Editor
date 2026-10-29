@@ -1,0 +1,7 @@
+{
+  "name": "Raman Gps Photo Editor",
+  "description": "Geotag photos with real-time GPS map stamps, customizable templates, coordinates, address, weather, altitude, compass, and QR code. All features unlocked and free.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
