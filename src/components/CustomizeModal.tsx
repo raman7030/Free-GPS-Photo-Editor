@@ -22,6 +22,7 @@ interface CustomizeModalProps {
   onUpdateLocation: (updated: Partial<LocationData>) => void;
   isEditingPhoto?: boolean;
   onApplyToPhoto?: () => void;
+  onOpenEditLocation?: () => void;
 }
 
 export const CustomizeModal: React.FC<CustomizeModalProps> = ({
@@ -32,6 +33,7 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
   onUpdateLocation,
   isEditingPhoto = false,
   onApplyToPhoto,
+  onOpenEditLocation,
 }) => {
   const [activeTab, setActiveTab] = useState<'layout' | 'typography' | 'colors' | 'map' | 'logo'>('layout');
 
@@ -143,7 +145,7 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
                 Live Stamp Preview
               </span>
               <div className="w-full">
-                <TemplateCard location={location} template={template} />
+                <TemplateCard location={location} template={template} onOpenEditLocation={onOpenEditLocation} />
               </div>
             </div>
 
