@@ -121,7 +121,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
   // Viewfinder Overlays Visibility
   const [showHUD, setShowHUD] = useState<boolean>(false);
   const [showLevelLine, setShowLevelLine] = useState<boolean>(false);
-  const [showStampPreview, setShowStampPreview] = useState<boolean>(true);
+  const [showStampPreview, setShowStampPreview] = useState<boolean>(false);
   const [isStampMinimized, setIsStampMinimized] = useState<boolean>(false);
 
   // Artificial Horizon Level Angle
@@ -714,7 +714,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
   return (
     <div className="relative w-full h-full bg-zinc-950 overflow-hidden select-none">
       {/* 1. TOP PRO-CAMERA TOOLBAR (FLOATING OVER CAMERA FEED) */}
-      <div className="absolute top-0 inset-x-0 z-40 w-full px-3 sm:px-5 pt-2.5 pb-6 bg-gradient-to-b from-black/85 via-black/40 to-transparent flex items-center justify-between pointer-events-auto">
+      <div className="absolute top-0 inset-x-0 z-40 w-full px-3 sm:px-5 pt-1.5 pb-2 bg-gradient-to-b from-black/85 via-black/40 to-transparent flex items-center justify-between pointer-events-auto">
         {/* Left: Menu & PWA */}
         <div className="flex items-center gap-2">
           <button
@@ -730,30 +730,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
 
         {/* Center: Sleek Quick-Toggles & Pro Options Pill */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Quick Flash */}
-          <button
-            type="button"
-            onClick={cycleFlash}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 border ${
-              flashMode !== 'off'
-                ? 'bg-amber-400 text-black border-amber-300 shadow-md shadow-amber-400/30'
-                : 'bg-black/50 hover:bg-black/80 text-zinc-400 border-white/10'
-            }`}
-            title={`Flash: ${flashMode.toUpperCase()}`}
-          >
-            {flashMode === 'off' ? <ZapOff className="w-4 h-4" /> : <Zap className="w-4 h-4 fill-current" />}
-          </button>
-
-          {/* Quick Aspect Ratio */}
-          <button
-            type="button"
-            onClick={cycleRatio}
-            className="h-9 px-2.5 rounded-full bg-black/50 hover:bg-black/80 text-zinc-200 border border-white/10 flex items-center justify-center text-[11px] font-black tracking-tight active:scale-90 transition-all cursor-pointer"
-            title="Aspect Ratio"
-          >
-            {aspectRatio === 'full' ? 'FULL' : aspectRatio}
-          </button>
-
           {/* Master Options Pill */}
           <button
             type="button"
@@ -807,7 +783,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
             />
 
             <div
-              className="absolute top-full inset-x-0 mx-auto w-full max-w-xl px-4 sm:px-6 pt-3 pb-5 bg-zinc-950/95 backdrop-blur-2xl border-b border-white/15 shadow-2xl z-50 text-white flex flex-col gap-3 rounded-b-3xl"
+              className="absolute top-full inset-x-0 mx-auto w-full max-w-xl px-3 sm:px-4 pt-2 pb-3 bg-zinc-950/95 backdrop-blur-2xl border-b border-white/15 shadow-2xl z-50 text-white flex flex-col gap-2 rounded-b-2xl"
               onMouseMove={resetAutoHideTimer}
               onTouchStart={resetAutoHideTimer}
             >
@@ -1386,7 +1362,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
         )}
 
         {/* 4. BOTTOM CONTROLS DOCK: LEFT = RECENT | CENTER = SHUTTER BUTTON | RIGHT = IMPORT */}
-        <div className="pointer-events-auto w-full pb-4 sm:pb-6 pt-6 px-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-center justify-between max-w-md sm:max-w-xl mx-auto">
+        <div className="pointer-events-auto w-full pb-2 sm:pb-3 pt-2 px-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-center justify-between max-w-md sm:max-w-xl mx-auto">
           {/* LEFT: RECENT CLICKED IMAGE */}
           <div className="flex flex-col items-center gap-1 w-16">
             {lastPhoto ? (
@@ -1419,7 +1395,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
           <button
             onClick={handleShutterClick}
             disabled={isCapturing}
-            className="relative w-20 h-20 rounded-full flex items-center justify-center focus:outline-none group active:scale-90 transition-transform cursor-pointer shadow-2xl"
+            className="relative w-[4.5rem] h-[4.5rem] rounded-full flex items-center justify-center focus:outline-none group active:scale-90 transition-transform cursor-pointer shadow-2xl"
             title={cameraActive || importedImage ? 'Capture Stamped Photo' : 'Activate Camera'}
             aria-label="Shutter Button"
           >
@@ -1428,7 +1404,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
             
             {/* Inner tactile button with status animation */}
             <div
-              className={`w-15 h-15 rounded-full flex items-center justify-center transition-all duration-150 shadow-inner ${
+              className={`w-[3.25rem] h-[3.25rem] rounded-full flex items-center justify-center transition-all duration-150 shadow-inner ${
                 isCapturing
                   ? 'scale-75 bg-red-500 animate-pulse'
                   : cameraActive || importedImage
