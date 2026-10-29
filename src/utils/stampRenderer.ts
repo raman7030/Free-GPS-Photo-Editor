@@ -221,18 +221,25 @@ async function fetchMapTileImage(lat: number, lng: number, zoom: number, mapType
 
   try {
     if (mapType === 'hybrid') {
-      const [imagery, labels] = await Promise.all([
-        loadImage(imageryUrl, 4500),
-        loadImage(hybridLabelsUrl, 4500),
-      ]);
+      // Keep the satellite imagery as the reliable base layer. Some tile providers
+      // reject the optional label overlay due to CORS/network restrictions; that must
+      // not force the output photo to use the bundled fallback map.
+      const imagery = await loadImage(imageryUrl, 4500);
+      const labels = await loadImage(hybridLabelsUrl, 2500).catch(() => null);
+      if (!labels) return imagery;
       const composite = document.createElement('canvas');
       composite.width = imagery.naturalWidth || 256;
       composite.height = imagery.naturalHeight || 256;
       const context = composite.getContext('2d');
       if (!context) return imagery;
       context.drawImage(imagery, 0, 0, composite.width, composite.height);
-      context.drawImage(labels, 0, 0, composite.width, composite.height);
-      return await loadImage(composite.toDataURL('image/png'), 1500);
+      try {
+        context.drawImage(labels, 0, 0, composite.width, composite.height);
+        return await loadImage(composite.toDataURL('image/png'), 1500);
+      } catch {
+        // Tainted canvas / blocked labels: preserve the satellite base tile.
+        return imagery;
+      }
     }
     const url = mapType === 'roadmap' ? roadUrl : mapType === 'terrain' ? terrainUrl : imageryUrl;
     return await loadImage(url, 4500);
