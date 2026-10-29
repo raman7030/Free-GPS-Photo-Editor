@@ -121,7 +121,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
   // Viewfinder Overlays Visibility
   const [showHUD, setShowHUD] = useState<boolean>(false);
   const [showLevelLine, setShowLevelLine] = useState<boolean>(false);
-  const [showStampPreview, setShowStampPreview] = useState<boolean>(false);
+  const [showStampPreview, setShowStampPreview] = useState<boolean>(true);
   const [isStampMinimized, setIsStampMinimized] = useState<boolean>(false);
 
   // Artificial Horizon Level Angle
