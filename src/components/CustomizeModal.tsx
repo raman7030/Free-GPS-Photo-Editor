@@ -156,7 +156,7 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
           {/* Right Column: Category Tabs & Content Controls */}
           <div className="md:w-7/12 flex flex-col min-h-0 flex-1">
             {/* Category Tabs */}
-            <div className="flex items-center gap-1.5 p-1 bg-neutral-950 rounded-2xl border border-neutral-800/80 mb-3 shrink-0 overflow-x-auto">
+            <div aria-label="Stamp customization sections" role="tablist" className="flex w-full max-w-full items-center gap-1.5 p-1 bg-neutral-950 rounded-2xl border border-neutral-800/80 mb-3 shrink-0 overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x whitespace-nowrap scrollbar-thin scrollbar-thumb-neutral-600 scrollbar-track-neutral-900">
               {[
                 { id: 'layout', label: 'Layout & Sizes', icon: Sliders },
                 { id: 'typography', label: 'Fonts', icon: Type },
@@ -170,7 +170,9 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
+                    role="tab"
+                    aria-selected={isActive}
+                    className={`px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 shrink-0 whitespace-nowrap transition-all cursor-pointer ${
                       isActive
                         ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30'
                         : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
