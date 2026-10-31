@@ -519,7 +519,7 @@ function drawClassicTemplate(
   // 2. Text Details
   const textX = panelX + Math.round(imgW * 0.02);
   const textW = Math.max(1, panelW - Math.round(imgW * 0.04));
-  let curY = panelY + (loc.showMap ? Math.max(textTopPadding, Math.round((panelH - measuredTextHeight) / 2)) : textTopPadding);
+  let curY = panelY + textTopPadding;
 
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
