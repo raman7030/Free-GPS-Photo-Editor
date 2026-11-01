@@ -342,7 +342,7 @@ function drawClassicTemplate(
   measuredTextHeight += wrapCanvasText(ctx, loc.fullAddress || '', textWForMeasure).length * detailSize * 1.22;
 
   if (loc.showCoordinates) {
-    ctx.font = `400 ${coordSize}px "${fontFamily}", monospace, sans-serif`;
+    ctx.font = `400 ${coordSize}px "${fontFamily}", -apple-system, sans-serif`;
     measuredTextHeight += wrapCanvasText(ctx, `Lat ${loc.latitude.toFixed(6)}° Long ${loc.longitude.toFixed(6)}°`, textWForMeasure).length * coordSize * 1.22;
   }
   if (loc.showDateTime) {
@@ -388,7 +388,7 @@ function drawClassicTemplate(
   ctx.font = `400 ${fittedDetailSize}px "${fontFamily}", -apple-system, sans-serif`;
   measuredTextHeight += wrapCanvasText(ctx, loc.fullAddress || '', textWForMeasure).length * fittedDetailSize * 1.22;
   if (loc.showCoordinates) {
-    ctx.font = `400 ${fittedCoordSize}px "${fontFamily}", monospace, sans-serif`;
+    ctx.font = `400 ${fittedCoordSize}px "${fontFamily}", -apple-system, sans-serif`;
     measuredTextHeight += wrapCanvasText(ctx, `Lat ${loc.latitude.toFixed(6)}° Long ${loc.longitude.toFixed(6)}°`, textWForMeasure).length * fittedCoordSize * 1.22;
   }
   if (loc.showDateTime) {
@@ -554,7 +554,7 @@ function drawClassicTemplate(
 
   // Line 3: Coordinates (strictly respects showCoordinates)
   if (loc.showCoordinates) {
-    ctx.font = `600 ${fittedCoordSize}px "${fontFamily}", monospace, sans-serif`;
+    ctx.font = `400 ${fittedCoordSize}px "${fontFamily}", -apple-system, sans-serif`;
     ctx.fillStyle = textColor;
     const coordsStr = `Lat ${loc.latitude.toFixed(6)}° Long ${loc.longitude.toFixed(6)}°`;
     for (const line of wrapCanvasText(ctx, coordsStr, textW)) {
@@ -786,7 +786,7 @@ function drawModernTemplate(
 
   // Coordinates (strictly respects showCoordinates)
   if (loc.showCoordinates) {
-    ctx.font = `600 ${detailSize}px monospace`;
+    ctx.font = `400 ${detailSize}px "${fontFamily}", sans-serif`;
     ctx.fillStyle = '#67e8f9';
     ctx.fillText(`Lat ${loc.latitude.toFixed(6)}° Long ${loc.longitude.toFixed(6)}°`, textX, curY);
     curY += detailSize * 1.25;
@@ -1073,7 +1073,7 @@ function drawQrScanTemplate(
 
   // Coordinates (strictly respects showCoordinates)
   if (loc.showCoordinates) {
-    ctx.font = `600 ${detailSize}px monospace`;
+    ctx.font = `400 ${detailSize}px "${fontFamily}", sans-serif`;
     ctx.fillStyle = '#c084fc';
     ctx.fillText(`Lat ${loc.latitude.toFixed(6)}° Long ${loc.longitude.toFixed(6)}°`, textX, curY);
     curY += detailSize * 1.25;
@@ -1198,7 +1198,7 @@ function drawDateTimeTemplate(
 
   // Coordinates (strictly respects showCoordinates)
   if (loc.showCoordinates) {
-    ctx.font = `600 ${subSize * 0.9}px monospace`;
+    ctx.font = `400 ${subSize * 0.9}px "${fontFamily}", sans-serif`;
     ctx.fillStyle = '#38bdf8';
     ctx.fillText(`Lat ${loc.latitude.toFixed(6)}° Long ${loc.longitude.toFixed(6)}°`, rightX, curRightY);
     curRightY += subSize * 1.15;
