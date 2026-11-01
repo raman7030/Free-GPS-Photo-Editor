@@ -233,34 +233,22 @@ export function formatAccuracy(meters: number, unit: Units): string {
   return `±${Math.round(meters)} m`;
 }
 
+// Geocode cache keys retain GPS precision (six decimals, roughly 0.11 m).
+// Three-decimal keys can collide across nearby streets and return a stale address.
+function geocodeCacheKey(lat: number, lng: number): string {
+  return lat.toFixed(6) + ',' + lng.toFixed(6);
+}
+
 // Helper: Get cached geocode result from localStorage
 function getCachedGeocode(lat: number, lng: number) {
   try {
     const raw = localStorage.getItem('gps_geo_cache');
     if (!raw) return null;
     const cache = JSON.parse(raw);
-    const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
-    if (cache[key]) return cache[key];
-    
-    // Also check saved locations
-    const rawSaved = localStorage.getItem('gps_saved_locations');
-    if (rawSaved) {
-      const savedList = JSON.parse(rawSaved);
-      const match = savedList.find((s: any) => 
-        Math.abs(s.latitude - lat) < 0.005 && Math.abs(s.longitude - lng) < 0.005
-      );
-      if (match) {
-        return {
-          shortAddress: match.shortAddress,
-          fullAddress: match.fullAddress,
-          countryCode: match.countryCode || 'US',
-          countryFlag: match.countryFlag || '🌐',
-          plusCode: match.plusCode || computePlusCode(lat, lng),
-        };
-      }
-    }
-  } catch {}
-  return null;
+    return cache[geocodeCacheKey(lat, lng)] || null;
+  } catch {
+    return null;
+  }
 }
 
 // Helper: Save geocode result to localStorage
@@ -268,13 +256,10 @@ function saveCachedGeocode(lat: number, lng: number, data: any) {
   try {
     const raw = localStorage.getItem('gps_geo_cache');
     const cache = raw ? JSON.parse(raw) : {};
-    const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
-    cache[key] = data;
+    cache[geocodeCacheKey(lat, lng)] = data;
     // Limit cache size to 150 entries
     const keys = Object.keys(cache);
-    if (keys.length > 150) {
-      delete cache[keys[0]];
-    }
+    if (keys.length > 150) delete cache[keys[0]];
     localStorage.setItem('gps_geo_cache', JSON.stringify(cache));
   } catch {}
 }
