@@ -366,9 +366,17 @@ function drawClassicTemplate(
       measuredTextHeight += wrapCanvasText(ctx, telemetryForMeasure.join('   '), textWForMeasure).length * telemetrySize * 1.2;
     }
   }
-  // Fit font sizes to the image's available stamp area before final measurement.
-  // A dense stamp uses slightly smaller type; address text is wrapped, never ellipsized.
-  const densityScale = Math.min(1, Math.sqrt((imgW * 0.46 * 0.38) / Math.max(1, measuredTextHeight)));
+  // Fit typography to the actual text column height. When a map is enabled,
+  // its square size defines the available vertical space beside it: a larger map
+  // gives the text column more room and a smaller map forces the type to shrink.
+  // Keep a conservative upper bound so short stamps do not become oversized.
+  const availableTextHeight = loc.showMap
+    ? Math.max(1, mapSize - textTopPadding - textBottomPadding)
+    : imgW * 0.46 * 0.38;
+  const densityScale = Math.max(
+    0.65,
+    Math.min(loc.showMap ? 1.65 : 1, Math.sqrt(availableTextHeight / Math.max(1, measuredTextHeight)))
+  );
   const fittedTitleSize = Math.max(12, Math.round(titleSize * densityScale));
   const fittedDetailSize = Math.max(9, Math.round(detailSize * densityScale));
   const fittedCoordSize = fittedDetailSize;
