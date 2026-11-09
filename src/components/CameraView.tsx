@@ -722,7 +722,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
   const lastPhoto = capturedPhotos[0];
 
   return (
-    <div className="relative w-full h-full bg-zinc-950 overflow-hidden select-none">
+    <div className="camera-experience relative w-full h-full bg-zinc-950 overflow-hidden select-none">
       {/* 1. TOP PRO-CAMERA TOOLBAR (FLOATING OVER CAMERA FEED) */}
       <div className="absolute top-0 inset-x-0 z-40 w-full px-3 sm:px-5 pt-1.5 pb-2 bg-gradient-to-b from-black/85 via-black/40 to-transparent flex items-center justify-between pointer-events-auto">
         {/* Left: Menu & PWA */}
