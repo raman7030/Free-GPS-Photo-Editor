@@ -17,7 +17,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
   onBackToCamera,
 }) => {
   return (
-    <div className="w-full h-full flex flex-col bg-neutral-950 text-white select-none">
+    <div className="gallery-experience w-full h-full flex flex-col bg-neutral-950 text-white select-none">
       {/* Top Header */}
       <div className="p-3.5 sm:p-5 bg-neutral-900/95 backdrop-blur-md border-b border-neutral-800 flex items-center justify-between z-10 shrink-0">
         <div className="flex items-center gap-2.5 sm:gap-3.5">
