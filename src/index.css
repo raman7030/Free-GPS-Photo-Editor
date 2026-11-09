@@ -67,3 +67,187 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.4);
 }
+
+
+/* --------------------------------------------------------------------------
+   PREMIUM VISUAL SYSTEM — presentation only; app state and event handlers
+   remain owned by the existing React components.
+   -------------------------------------------------------------------------- */
+:root {
+  color-scheme: dark;
+  --premium-bg: #070b12;
+  --premium-surface: rgba(15, 23, 35, .88);
+  --premium-surface-strong: #101a28;
+  --premium-line: rgba(148, 163, 184, .16);
+  --premium-text: #f4f8ff;
+  --premium-muted: #9aa9bc;
+  --premium-accent: #57d6d0;
+  --premium-accent-strong: #19b9b2;
+  --premium-glow: rgba(45, 212, 191, .18);
+}
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: var(--premium-bg);
+}
+body {
+  color: var(--premium-text);
+  font-family: Inter, "SF UI Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.premium-ui {
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(20, 184, 166, .10), transparent 34%),
+    radial-gradient(ellipse at 100% 100%, rgba(59, 130, 246, .08), transparent 38%),
+    var(--premium-bg) !important;
+  letter-spacing: -.012em;
+}
+.premium-ui button, .premium-ui input, .premium-ui select, .premium-ui textarea {
+  font: inherit;
+}
+.premium-ui button {
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.premium-ui button:focus-visible {
+  outline: 2px solid var(--premium-accent) !important;
+  outline-offset: 3px;
+}
+.premium-ui input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.premium-ui select, .premium-ui textarea {
+  border-color: rgba(148, 163, 184, .22) !important;
+  background: rgba(7, 13, 22, .82) !important;
+  color: var(--premium-text) !important;
+  border-radius: 14px;
+}
+.premium-ui input[type="range"] { accent-color: var(--premium-accent-strong); }
+.premium-ui ::selection { background: rgba(45, 212, 191, .28); color: white; }
+
+/* Full-bleed camera with restrained floating controls. */
+.camera-experience {
+  isolation: isolate;
+  background: #030609 !important;
+}
+.camera-experience > .absolute.top-0.inset-x-0 {
+  padding: max(env(safe-area-inset-top), 10px) 16px 18px !important;
+  background: linear-gradient(180deg, rgba(3, 8, 14, .88), rgba(3, 8, 14, .34) 72%, transparent) !important;
+}
+.camera-experience > .absolute.top-0.inset-x-0 > div > button,
+.camera-experience > .absolute.top-0.inset-x-0 button[aria-label="Switch Camera Lens"] {
+  border: 1px solid rgba(226, 242, 255, .18) !important;
+  background: rgba(9, 18, 28, .68) !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .25) !important;
+  backdrop-filter: blur(18px) saturate(145%);
+}
+.camera-experience > .absolute.top-0.inset-x-0 button[aria-label="Switch Camera Lens"] {
+  color: #7ce7df !important;
+}
+.camera-experience > .absolute.top-0.inset-x-0 button[aria-expanded] {
+  border-color: rgba(87, 214, 208, .48) !important;
+  color: #d9fffc !important;
+  background: rgba(10, 37, 43, .82) !important;
+}
+.camera-experience [class*="bg-zinc-950/95"][class*="backdrop-blur-2xl"] {
+  background: rgba(7, 14, 23, .96) !important;
+  border: 1px solid rgba(148, 163, 184, .20) !important;
+  border-radius: 0 0 24px 24px !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .55) !important;
+}
+.camera-experience [class*="bg-violet-500/15"],
+.camera-experience [class*="bg-blue-500/15"],
+.camera-experience [class*="bg-emerald-500/15"],
+.camera-experience [class*="bg-purple-500/15"],
+.camera-experience [class*="bg-rose-500/15"],
+.camera-experience [class*="bg-zinc-900/90"] {
+  background: rgba(19, 31, 44, .88) !important;
+  border-color: rgba(148, 163, 184, .18) !important;
+  color: #dce8f5 !important;
+}
+.camera-experience [class*="bg-violet-500/15"] svg,
+.camera-experience [class*="bg-blue-500/15"] svg,
+.camera-experience [class*="bg-emerald-500/15"] svg,
+.camera-experience [class*="bg-purple-500/15"] svg,
+.camera-experience [class*="bg-rose-500/15"] svg { color: #75ddd5 !important; }
+.camera-experience [class*="bg-amber-400"] {
+  box-shadow: 0 8px 24px rgba(45, 212, 191, .16);
+}
+.camera-experience [class*="rounded-xl"][class*="border"] {
+  border-radius: 15px;
+}
+.camera-experience [class*="bg-radial"] {
+  background: radial-gradient(ellipse at center, #152332 0%, #070c13 70%, #030609 100%) !important;
+}
+.camera-experience [class*="shadow-2xl"] { --tw-shadow-color: rgba(0,0,0,.42); }
+
+/* Gallery as a premium media library. */
+.gallery-experience {
+  background:
+    radial-gradient(ellipse at 10% 0%, rgba(20,184,166,.09), transparent 38%),
+    #080d15 !important;
+}
+.gallery-experience > div:first-child {
+  padding: max(env(safe-area-inset-top), 14px) 18px 16px !important;
+  background: rgba(9, 16, 26, .88) !important;
+  border-bottom: 1px solid var(--premium-line) !important;
+  backdrop-filter: blur(22px) saturate(150%);
+}
+.gallery-experience h2 {
+  font-size: clamp(19px, 4vw, 25px) !important;
+  font-weight: 750 !important;
+  letter-spacing: -.04em !important;
+}
+.gallery-experience > div:nth-child(2) { padding: 18px !important; }
+.gallery-experience .grid > div[role],
+.gallery-experience .grid > div.group {
+  border-radius: 20px !important;
+  border-color: rgba(148, 163, 184, .20) !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,.24) !important;
+  background: #101a28 !important;
+}
+.gallery-experience button[class*="bg-sky-500"] {
+  background: linear-gradient(135deg, #22c9bd, #148d91) !important;
+  color: #041416 !important;
+  border: 0 !important;
+  box-shadow: 0 8px 24px rgba(20,184,166,.18) !important;
+}
+
+/* Shared premium surfaces for sheets, dialogs and drawers. */
+.premium-ui [class*="bg-neutral-900"],
+.premium-ui [class*="bg-zinc-950/95"],
+.premium-ui [class*="bg-[#11151d]"] {
+  background-color: rgba(11, 19, 30, .97) !important;
+  border-color: rgba(148, 163, 184, .18) !important;
+}
+.premium-ui [class*="rounded-3xl"][class*="border"],
+.premium-ui [class*="rounded-[28px]"][class*="border"],
+.premium-ui [class*="rounded-t-3xl"][class*="border"] {
+  box-shadow: 0 28px 90px rgba(0,0,0,.48) !important;
+}
+.premium-ui [class*="border-neutral-800"],
+.premium-ui [class*="border-white/10"] {
+  border-color: var(--premium-line) !important;
+}
+.premium-ui [class*="text-sky-400"],
+.premium-ui [class*="text-cyan-400"] { color: var(--premium-accent) !important; }
+.premium-ui [class*="bg-sky-500"]:not([class*="bg-sky-500/"]),
+.premium-ui [class*="bg-cyan-500"]:not([class*="bg-cyan-500/"]) {
+  background: linear-gradient(135deg, #3ad5ca, #168f96) !important;
+  color: #031719 !important;
+}
+.premium-ui [class*="ring-sky-500"] { --tw-ring-color: rgba(87,214,208,.32) !important; }
+
+/* Respect reduced-motion preferences and compact handset safe areas. */
+@media (max-width: 640px) {
+  .premium-ui [class*="max-h-"] { overscroll-behavior: contain; }
+  .camera-experience > .absolute.top-0.inset-x-0 { padding-left: 12px !important; padding-right: 12px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .premium-ui *, .premium-ui *::before, .premium-ui *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
