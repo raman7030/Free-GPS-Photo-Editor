@@ -361,18 +361,19 @@ function drawClassicTemplate(
   const availableTextHeight = loc.showMap
     ? Math.max(1, mapSize - textTopPadding - textBottomPadding)
     : imgW * 0.46 * 0.38;
-  const densityScale = Math.max(
-    0.65,
-    Math.min(loc.showMap ? 1.65 : 1, Math.sqrt(availableTextHeight / Math.max(1, measuredTextHeight)))
+  // Use a linear fit ratio: square-root scaling still allowed the text block to
+  // exceed the map height when many optional stamp rows were enabled.
+  const densityScale = Math.min(
+    loc.showMap ? 1.65 : 1,
+    availableTextHeight / Math.max(1, measuredTextHeight)
   );
-  const fittedTitleSize = Math.max(12, Math.round(titleSize * densityScale));
-  const fittedDetailSize = Math.max(9, Math.round(detailSize * densityScale));
-  const fittedCoordSize = Math.max(9, Math.round(coordSize * densityScale));
-  const fittedDateTimeSize = Math.max(9, Math.round(dateTimeSize * densityScale));
+  const fittedTitleSize = Math.max(8, Math.round(titleSize * densityScale));
+  const fittedDetailSize = Math.max(7, Math.round(detailSize * densityScale));
+  const fittedCoordSize = Math.max(7, Math.round(coordSize * densityScale));
+  const fittedDateTimeSize = Math.max(7, Math.round(dateTimeSize * densityScale));
   // Re-measure with fitted fonts so the panel and full address cannot clip.
   measuredTextHeight = 0;
   ctx.font = `800 ${fittedTitleSize}px "${fontFamily}", -apple-system, sans-serif`;
-  measuredTextHeight += wrapCanvasText(ctx, titleForMeasure, textWForMeasure).length * fittedTitleSize * 1.25;
   measuredTextHeight += wrapCanvasText(ctx, titleForMeasure, textWForMeasure).length * fittedTitleSize * 1.25;
   ctx.font = `400 ${fittedDetailSize}px "${fontFamily}", -apple-system, sans-serif`;
   measuredTextHeight += wrapCanvasText(ctx, loc.fullAddress || '', textWForMeasure).length * fittedDetailSize * 1.22;
@@ -405,7 +406,9 @@ function drawClassicTemplate(
   const outerVerticalInset = Math.round(imgW * 0.018);
   // Size the stamp background to the actual rendered content; avoid a fixed minimum height
   // that leaves an oversized empty text panel for short stamps.
-  const contentH = loc.showMap ? Math.max(mapSize, textLinesH) : textLinesH;
+  // With a side map, the text panel is locked to the map's exact square bounds.
+  // Typography is fitted inside that height rather than stretching the panel.
+  const contentH = loc.showMap ? mapSize : textLinesH;
   const cardH = contentH + outerVerticalInset * 2;
   const cardY = imgH - cardH;
 
@@ -528,7 +531,9 @@ function drawClassicTemplate(
   // 2. Text Details
   const textX = panelX + Math.round(imgW * 0.02);
   const textW = Math.max(1, panelW - Math.round(imgW * 0.04));
-  let curY = panelY + textTopPadding;
+  let curY = panelY + (loc.showMap
+    ? Math.max(textTopPadding, (contentH - measuredTextHeight) / 2)
+    : textTopPadding);
 
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
