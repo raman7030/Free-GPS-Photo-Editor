@@ -233,6 +233,60 @@ export function formatAccuracy(meters: number, unit: Units): string {
   return `±${Math.round(meters)} m`;
 }
 
+/**
+ * Maps a 0 to 100 snapshot map zoom slider value to Web Mercator tile zoom (1.0 to 19.0).
+ * Supports continuous floating zoom and graceful migration from legacy 1-19 zoom numbers.
+ */
+export function getMapTileZoom(zoomPercent: number | undefined | null): number {
+  if (zoomPercent === undefined || zoomPercent === null || Number.isNaN(zoomPercent)) {
+    return 16.3; // Default ~85% street level
+  }
+  const clamped = Math.max(0, Math.min(100, zoomPercent));
+  // Linear continuous mapping from z=1.0 (world) to z=19.0 (detailed building rooftop)
+  return 1 + (clamped / 100) * 18;
+}
+
+/**
+ * Calculates base Web Mercator tile indices and continuous sub-tile scaling
+ * from latitude, longitude and a 0-100 zoom slider value.
+ */
+export function getMapTileCoordinates(lat: number, lng: number, zoomPercent: number | undefined | null) {
+  const floatZ = getMapTileZoom(zoomPercent);
+  const baseZ = Math.max(1, Math.min(19, Math.round(floatZ)));
+  const subScale = Math.pow(2, floatZ - baseZ);
+
+  const tileX = Math.max(0, Math.min(2 ** baseZ - 1, Math.floor(((lng + 180) / 360) * (2 ** baseZ))));
+  const clampedLat = Math.max(-85.0511, Math.min(85.0511, lat));
+  const latRad = (clampedLat * Math.PI) / 180;
+  const tileY = Math.max(
+    0,
+    Math.min(
+      2 ** baseZ - 1,
+      Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * (2 ** baseZ))
+    )
+  );
+
+  return { floatZ, baseZ, tileX, tileY, subScale };
+}
+
+/**
+ * Formats a 0 to 100 zoom slider percentage into a descriptive label.
+ */
+export function formatMapZoomLabel(zoomPercent: number | undefined | null): string {
+  const val = Math.round(
+    zoomPercent !== undefined && zoomPercent !== null && !Number.isNaN(zoomPercent)
+      ? zoomPercent
+      : 85
+  );
+  const clamped = Math.max(0, Math.min(100, val));
+  if (clamped <= 15) return `${clamped}% • World`;
+  if (clamped <= 35) return `${clamped}% • Country`;
+  if (clamped <= 55) return `${clamped}% • Metro / Region`;
+  if (clamped <= 75) return `${clamped}% • City / Town`;
+  if (clamped <= 88) return `${clamped}% • Street Level`;
+  return `${clamped}% • Building / Close-up`;
+}
+
 // Geocode cache keys retain GPS precision (six decimals, roughly 0.11 m).
 // Three-decimal keys can collide across nearby streets and return a stale address.
 function geocodeCacheKey(lat: number, lng: number): string {

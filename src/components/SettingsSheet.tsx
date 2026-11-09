@@ -27,6 +27,7 @@ import {
   formatTimeForInput,
   createDateFromInputs,
   getGmtOffsetString,
+  formatMapZoomLabel,
 } from '../utils/geo';
 
 interface SettingsSheetProps {
@@ -161,39 +162,56 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
               ))}
             </div>
 
-            {/* Map Zoom Slider */}
+            {/* Snapshot Map Zoom Slider (0 to 100) */}
             <div className="pt-2 border-t border-neutral-800/60 flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-400" />
-                  <span className="text-xs sm:text-sm text-neutral-300 font-medium">Map Zoom Level</span>
+                  <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-400" />
+                  <span className="text-xs sm:text-sm text-neutral-300 font-medium">Snapshot Map Zoom</span>
                 </div>
-                <span className="text-xs sm:text-sm font-mono text-sky-400 font-bold px-2 py-0.5 rounded-md bg-sky-500/10 border border-sky-500/20">{location.mapZoom ?? 16}x</span>
+                <span className="text-xs sm:text-sm font-mono text-sky-400 font-bold px-2 py-0.5 rounded-md bg-sky-500/10 border border-sky-500/20">
+                  {formatMapZoomLabel(location.mapZoom ?? 85)}
+                </span>
               </div>
               <input
                 type="range"
-                min="10"
-                max="19"
+                min="0"
+                max="100"
                 step="1"
-                value={location.mapZoom ?? 16}
+                value={Math.round(location.mapZoom ?? 85)}
                 onChange={(e) => onUpdateLocation({ mapZoom: Number(e.target.value) })}
                 className="w-full accent-sky-500 cursor-pointer h-2 bg-neutral-800 rounded-lg appearance-none"
               />
-              <div className="flex gap-1.5 pt-0.5">
-                {[12, 14, 16, 18].map((z) => (
-                  <button
-                    key={z}
-                    type="button"
-                    onClick={() => onUpdateLocation({ mapZoom: z })}
-                    className={`flex-1 py-1 text-center text-[10px] sm:text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
-                      (location.mapZoom ?? 16) === z
-                        ? 'bg-sky-500 text-white border-sky-400 shadow-sm'
-                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
-                    }`}
-                  >
-                    {z}x
-                  </button>
-                ))}
+              <div className="grid grid-cols-5 gap-1.5 pt-0.5">
+                {[
+                  { label: '0%', val: 0, sub: 'World' },
+                  { label: '25%', val: 25, sub: 'Region' },
+                  { label: '50%', val: 50, sub: 'City' },
+                  { label: '75%', val: 75, sub: 'Town' },
+                  { label: '100%', val: 100, sub: 'Max' },
+                ].map((z) => {
+                  const currentVal = Math.round(location.mapZoom ?? 85);
+                  const isSelected = Math.abs(currentVal - z.val) <= 12 && (
+                    (z.val === 0 && currentVal <= 12) ||
+                    (z.val === 100 && currentVal >= 88) ||
+                    (z.val > 0 && z.val < 100 && Math.abs(currentVal - z.val) <= 12)
+                  );
+                  return (
+                    <button
+                      key={z.val}
+                      type="button"
+                      onClick={() => onUpdateLocation({ mapZoom: z.val })}
+                      className={`py-1 px-0.5 text-center rounded-lg border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-sky-500 text-white border-sky-400 shadow-sm'
+                          : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      <div className="text-[10px] sm:text-xs font-semibold leading-tight">{z.label}</div>
+                      <div className="text-[8px] sm:text-[9px] opacity-75 leading-tight">{z.sub}</div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -205,7 +223,7 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
                   <span className="text-[11px] font-semibold text-white">Side Map Snapshot Size</span>
                 </div>
                 <span className="text-[11px] font-mono text-sky-400 font-bold px-1.5 py-0.5 rounded bg-sky-500/15 border border-sky-500/30">
-                  {Math.round((location.mapWidthRatio || 0.32) * 100)}% Width
+                  {Math.round((location.mapWidthRatio || 0.30) * 100)}% Width
                 </span>
               </div>
               <input
@@ -213,7 +231,7 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
                 min="0.18"
                 max="0.48"
                 step="0.02"
-                value={location.mapWidthRatio || 0.32}
+                value={location.mapWidthRatio || 0.30}
                 onChange={(e) => onUpdateLocation({ mapWidthRatio: Number(e.target.value) })}
                 className="w-full accent-sky-500 cursor-pointer h-1.5 bg-neutral-800 rounded-lg appearance-none"
               />
@@ -224,7 +242,7 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
                   { label: 'Large', ratio: 0.38 },
                   { label: 'Max', ratio: 0.46 },
                 ].map((p) => {
-                  const isSelected = Math.abs((location.mapWidthRatio || 0.32) - p.ratio) < 0.03;
+                  const isSelected = Math.abs((location.mapWidthRatio || 0.30) - p.ratio) < 0.03;
                   return (
                     <button
                       key={p.label}

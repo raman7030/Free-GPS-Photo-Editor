@@ -8,11 +8,13 @@ import {
   Type,
   Palette,
   Map as MapIcon,
+  ZoomIn,
   Image as ImageIcon,
   Check,
   Upload,
 } from 'lucide-react';
 import { getOpacityLabel } from '../utils/colorUtils';
+import { formatMapZoomLabel } from '../utils/geo';
 
 interface CustomizeModalProps {
   isOpen: boolean;
@@ -36,10 +38,44 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
   onOpenEditLocation,
 }) => {
   const [activeTab, setActiveTab] = useState<'layout' | 'typography' | 'colors' | 'map' | 'logo'>('layout');
+  const [savedDefaultMsg, setSavedDefaultMsg] = useState(false);
 
   if (!isOpen) return null;
 
+  const handleSetCurrentAsDefault = () => {
+    try {
+      const layoutDefaults = {
+        bgOpacity: location.bgOpacity ?? 0.5,
+        bgCornerRadius: location.bgCornerRadius ?? 12,
+        bgColor: location.bgColor ?? '#000000',
+        textColor: location.textColor ?? '#ffffff',
+        accentColor: location.accentColor ?? '#38bdf8',
+        shortAddressSize: location.shortAddressSize ?? 22,
+        fullAddressSize: location.fullAddressSize ?? 16,
+        coordinateSize: location.coordinateSize ?? 16,
+        dateTimeSize: location.dateTimeSize ?? 16,
+        mapWidthRatio: location.mapWidthRatio ?? 0.30,
+        mapZoom: location.mapZoom ?? 85,
+        mapType: location.mapType ?? 'hybrid',
+        markerPinScale: location.markerPinScale ?? 1.0,
+        watermarkIconScale: location.watermarkIconScale ?? 1.0,
+        fontFamily: location.fontFamily ?? 'SF UI Text',
+      };
+      localStorage.setItem('gps_user_default_layout', JSON.stringify(layoutDefaults));
+      setSavedDefaultMsg(true);
+      setTimeout(() => setSavedDefaultMsg(false), 2500);
+    } catch {}
+  };
+
   const handleReset = () => {
+    let customDefaults: Partial<LocationData> = {};
+    try {
+      const raw = localStorage.getItem('gps_user_default_layout');
+      if (raw) {
+        customDefaults = JSON.parse(raw);
+      }
+    } catch {}
+
     onUpdateLocation({
       bgOpacity: 0.5,
       bgCornerRadius: 12,
@@ -52,7 +88,7 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
       watermarkIconScale: 1.0,
       fontFamily: 'SF UI Text',
       mapType: 'hybrid',
-      mapZoom: 18,
+      mapZoom: 85,
       showMap: true,
       showFlag: true,
       showCoordinates: true,
@@ -66,7 +102,9 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
       showWatermark: true,
       showBrand: true,
       textColor: '#ffffff',
+      bgColor: '#000000',
       customLogoUrl: '/assets/drawables/w_icon.png',
+      ...customDefaults,
     });
   };
 
@@ -119,6 +157,18 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleSetCurrentAsDefault}
+              title="Save current layout sizes as default for future sessions"
+              className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer border active:scale-95 ${
+                savedDefaultMsg
+                  ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-500/30'
+                  : 'bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 hover:text-white border-sky-500/30'
+              }`}
+            >
+              <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span>{savedDefaultMsg ? 'Default Saved!' : 'Save as Default'}</span>
+            </button>
             <button
               onClick={handleReset}
               title="Reset to default settings"
@@ -192,57 +242,145 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
           {/* TAB 1: LAYOUT & SIZES */}
           {activeTab === 'layout' && (
             <div className="space-y-4">
-              <div>
+              {/* Quick Font Scalability Presets */}
+              <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
+                <div className="flex justify-between items-center text-xs font-semibold text-neutral-200">
+                  <span className="flex items-center gap-1.5">
+                    <Type className="w-4 h-4 text-sky-400" />
+                    <span>Stamp Text Size Presets</span>
+                  </span>
+                  <span className="text-[11px] text-neutral-400">Auto-scalable</span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 pt-1">
+                  {[
+                    { label: 'Compact', short: 16, full: 12, coord: 12, dt: 12, desc: '16/12px' },
+                    { label: 'Default', short: 22, full: 16, coord: 16, dt: 16, desc: '22/16px' },
+                    { label: 'Large', short: 28, full: 18, coord: 18, dt: 18, desc: '28/18px' },
+                    { label: 'Extra Bold', short: 36, full: 22, coord: 22, dt: 22, desc: '36/22px' },
+                  ].map((preset) => {
+                    const isSelected =
+                      location.shortAddressSize === preset.short &&
+                      location.fullAddressSize === preset.full;
+                    return (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() =>
+                          onUpdateLocation({
+                            shortAddressSize: preset.short,
+                            fullAddressSize: preset.full,
+                            coordinateSize: preset.coord,
+                            dateTimeSize: preset.dt,
+                          })
+                        }
+                        className={`py-1.5 px-1 rounded-xl text-xs font-medium border text-center transition ${
+                          isSelected
+                            ? 'bg-sky-500 text-white border-sky-400 font-bold shadow-md shadow-sky-500/25'
+                            : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-white'
+                        }`}
+                      >
+                        <span className="block leading-tight font-semibold">{preset.label}</span>
+                        <span className="text-[9px] opacity-75">{preset.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Short Address Scalable Slider */}
+              <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
                 <div className="flex justify-between text-xs font-medium text-neutral-300 mb-1">
-                  <span>Short Address Text Size</span>
-                  <span className="font-mono text-sky-400">{location.shortAddressSize}px</span>
+                  <span className="font-semibold text-white">Short Address Text Size (City / Site)</span>
+                  <span className="font-mono text-sky-400 font-bold px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30">
+                    {location.shortAddressSize}px
+                  </span>
                 </div>
                 <input
                   type="range"
-                  min="11"
-                  max="22"
+                  min="10"
+                  max="42"
                   step="1"
                   value={location.shortAddressSize}
                   onChange={(e) => onUpdateLocation({ shortAddressSize: Number(e.target.value) })}
-                  className="w-full accent-sky-500 cursor-pointer"
+                  className="w-full accent-sky-500 cursor-pointer h-2 bg-neutral-800 rounded-lg appearance-none"
                 />
+                <div className="flex justify-between text-[10px] text-neutral-400">
+                  <span>10px (Small)</span>
+                  <span className="text-sky-400 font-bold">22px (Standard Default)</span>
+                  <span>42px (Max Bold)</span>
+                </div>
               </div>
 
-              <div>
+              {/* Full Address Scalable Slider */}
+              <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
                 <div className="flex justify-between text-xs font-medium text-neutral-300 mb-1">
-                  <span>Full Address Text Size</span>
-                  <span className="font-mono text-sky-400">{location.fullAddressSize}px</span>
+                  <span className="font-semibold text-white">Long Address Text Size</span>
+                  <span className="font-mono text-sky-400 font-bold px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30">
+                    {location.fullAddressSize}px
+                  </span>
                 </div>
                 <input
                   type="range"
-                  min="9"
-                  max="16"
+                  min="8"
+                  max="30"
                   step="0.5"
                   value={location.fullAddressSize}
                   onChange={(e) => onUpdateLocation({ fullAddressSize: Number(e.target.value) })}
-                  className="w-full accent-sky-500 cursor-pointer"
+                  className="w-full accent-sky-500 cursor-pointer h-2 bg-neutral-800 rounded-lg appearance-none"
                 />
+                <div className="flex justify-between text-[10px] text-neutral-400">
+                  <span>8px (Fine)</span>
+                  <span className="text-sky-400 font-bold">16px (Standard Default)</span>
+                  <span>30px (Large)</span>
+                </div>
               </div>
 
-              <div>
+              {/* Coordinates Scalable Slider */}
+              <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
                 <div className="flex justify-between text-xs font-medium text-neutral-300 mb-1">
-                  <span>Coordinates &amp; Details Text Size</span>
-                  <span className="font-mono text-sky-400">{location.coordinateSize}px</span>
+                  <span className="font-semibold text-white">Coordinates Text Size</span>
+                  <span className="font-mono text-sky-400 font-bold px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30">
+                    {location.coordinateSize}px
+                  </span>
                 </div>
                 <input
                   type="range"
-                  min="9"
-                  max="16"
+                  min="8"
+                  max="30"
                   step="0.5"
                   value={location.coordinateSize}
-                  onChange={(e) =>
-                    onUpdateLocation({
-                      coordinateSize: Number(e.target.value),
-                      dateTimeSize: Number(e.target.value),
-                    })
-                  }
-                  className="w-full accent-sky-500 cursor-pointer"
+                  onChange={(e) => onUpdateLocation({ coordinateSize: Number(e.target.value) })}
+                  className="w-full accent-sky-500 cursor-pointer h-2 bg-neutral-800 rounded-lg appearance-none"
                 />
+                <div className="flex justify-between text-[10px] text-neutral-400">
+                  <span>8px (Fine)</span>
+                  <span className="text-sky-400 font-bold">16px (Standard Default)</span>
+                  <span>30px (Large)</span>
+                </div>
+              </div>
+
+              {/* Date & Time Scalable Slider */}
+              <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
+                <div className="flex justify-between text-xs font-medium text-neutral-300 mb-1">
+                  <span className="font-semibold text-white">Date, Time &amp; Note Text Size</span>
+                  <span className="font-mono text-sky-400 font-bold px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30">
+                    {location.dateTimeSize}px
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="8"
+                  max="30"
+                  step="0.5"
+                  value={location.dateTimeSize}
+                  onChange={(e) => onUpdateLocation({ dateTimeSize: Number(e.target.value) })}
+                  className="w-full accent-sky-500 cursor-pointer h-2 bg-neutral-800 rounded-lg appearance-none"
+                />
+                <div className="flex justify-between text-[10px] text-neutral-400">
+                  <span>8px (Fine)</span>
+                  <span className="text-sky-400 font-bold">16px (Standard Default)</span>
+                  <span>30px (Large)</span>
+                </div>
               </div>
 
               {/* Side Map Snapshot Size */}
@@ -287,6 +425,59 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
                       >
                         <span className="block leading-tight">{p.label}</span>
                         <span className="text-[10px] opacity-75">{Math.round(p.ratio * 100)}%</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Snapshot Map Zoom Level (0 to 100) */}
+              <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2.5">
+                <div className="flex justify-between items-center text-xs font-semibold text-neutral-200">
+                  <span className="flex items-center gap-1.5">
+                    <ZoomIn className="w-4 h-4 text-sky-400" />
+                    <span>Snapshot Map Zoom</span>
+                  </span>
+                  <span className="font-mono text-sky-400 font-bold px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30">
+                    {formatMapZoomLabel(location.mapZoom ?? 85)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={Math.round(location.mapZoom ?? 85)}
+                  onChange={(e) => onUpdateLocation({ mapZoom: Number(e.target.value) })}
+                  className="w-full accent-sky-500 cursor-pointer h-2 bg-neutral-800 rounded-lg appearance-none"
+                />
+                <div className="grid grid-cols-5 gap-1.5 pt-1">
+                  {[
+                    { label: '0%', val: 0, sub: 'World' },
+                    { label: '25%', val: 25, sub: 'Region' },
+                    { label: '50%', val: 50, sub: 'City' },
+                    { label: '75%', val: 75, sub: 'Town' },
+                    { label: '100%', val: 100, sub: 'Max' },
+                  ].map((z) => {
+                    const currentVal = Math.round(location.mapZoom ?? 85);
+                    const isSelected = Math.abs(currentVal - z.val) <= 12 && (
+                      (z.val === 0 && currentVal <= 12) ||
+                      (z.val === 100 && currentVal >= 88) ||
+                      (z.val > 0 && z.val < 100 && Math.abs(currentVal - z.val) <= 12)
+                    );
+                    return (
+                      <button
+                        key={z.val}
+                        type="button"
+                        onClick={() => onUpdateLocation({ mapZoom: z.val })}
+                        className={`py-1.5 px-0.5 rounded-xl text-xs font-medium border text-center transition ${
+                          isSelected
+                            ? 'bg-sky-500 text-white border-sky-400 font-bold shadow-md shadow-sky-500/25'
+                            : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-white'
+                        }`}
+                      >
+                        <span className="block leading-tight font-semibold">{z.label}</span>
+                        <span className="text-[9px] opacity-75">{z.sub}</span>
                       </button>
                     );
                   })}
@@ -561,6 +752,59 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
                       >
                         <span className="block leading-tight">{p.label}</span>
                         <span className="text-[10px] opacity-75">{Math.round(p.ratio * 100)}%</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Snapshot Map Zoom Level (0 to 100) */}
+              <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2.5">
+                <div className="flex justify-between items-center text-xs font-semibold text-neutral-200">
+                  <span className="flex items-center gap-1.5">
+                    <ZoomIn className="w-4 h-4 text-sky-400" />
+                    <span>Snapshot Map Zoom</span>
+                  </span>
+                  <span className="font-mono text-sky-400 font-bold px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30">
+                    {formatMapZoomLabel(location.mapZoom ?? 85)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={Math.round(location.mapZoom ?? 85)}
+                  onChange={(e) => onUpdateLocation({ mapZoom: Number(e.target.value) })}
+                  className="w-full accent-sky-500 cursor-pointer h-2 bg-neutral-800 rounded-lg appearance-none"
+                />
+                <div className="grid grid-cols-5 gap-1.5 pt-1">
+                  {[
+                    { label: '0%', val: 0, sub: 'World' },
+                    { label: '25%', val: 25, sub: 'Region' },
+                    { label: '50%', val: 50, sub: 'City' },
+                    { label: '75%', val: 75, sub: 'Town' },
+                    { label: '100%', val: 100, sub: 'Max' },
+                  ].map((z) => {
+                    const currentVal = Math.round(location.mapZoom ?? 85);
+                    const isSelected = Math.abs(currentVal - z.val) <= 12 && (
+                      (z.val === 0 && currentVal <= 12) ||
+                      (z.val === 100 && currentVal >= 88) ||
+                      (z.val > 0 && z.val < 100 && Math.abs(currentVal - z.val) <= 12)
+                    );
+                    return (
+                      <button
+                        key={z.val}
+                        type="button"
+                        onClick={() => onUpdateLocation({ mapZoom: z.val })}
+                        className={`py-1.5 px-0.5 rounded-xl text-xs font-medium border text-center transition ${
+                          isSelected
+                            ? 'bg-sky-500 text-white border-sky-400 font-bold shadow-md shadow-sky-500/25'
+                            : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-white'
+                        }`}
+                      >
+                        <span className="block leading-tight font-semibold">{z.label}</span>
+                        <span className="text-[9px] opacity-75">{z.sub}</span>
                       </button>
                     );
                   })}

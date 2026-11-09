@@ -85,7 +85,7 @@ export interface LocationData {
   
   // Map configuration
   mapType: MapType;
-  mapZoom: number;
+  mapZoom: number; // 0 to 100 snapshot map zoom slider scale
   
   // Format configurations
   dateFormat: DateFormat;

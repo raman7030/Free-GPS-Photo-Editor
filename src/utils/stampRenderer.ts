@@ -8,8 +8,10 @@ import {
   formatAccuracy,
   formatTemperature,
   getGmtOffsetString,
+  getMapTileCoordinates,
 } from './geo';
 import { getEffectiveBgColor } from './colorUtils';
+import { FALLBACK_MAP_DATA_URL } from './fallbackMap';
 
 function wrapCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = String(text || '').trim().split(/\s+/).filter(Boolean);
@@ -106,7 +108,7 @@ export async function renderStampedPhoto(options: StampRenderOptions): Promise<{
       ? loadImage(location.customMapPinUrl || '/assets/drawables/map_pin.png', 2000).catch(() => null)
       : Promise.resolve(null),
     location.showMap
-      ? fetchMapTileImage(location.latitude, location.longitude, location.mapZoom || 16, location.mapType).catch(() => null)
+      ? fetchMapTileImage(location.latitude, location.longitude, location.mapZoom, location.mapType).catch(() => null)
       : Promise.resolve(null),
     template === 'qr_scan'
       ? generateQrImage(`https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`)
@@ -208,11 +210,8 @@ async function generateQrImage(url: string): Promise<HTMLImageElement | null> {
   }
 }
 
-async function fetchMapTileImage(lat: number, lng: number, zoom: number, mapType: string): Promise<HTMLImageElement | null> {
-  const z = Math.max(1, Math.min(19, Math.round(zoom)));
-  const tileX = Math.max(0, Math.min(2 ** z - 1, Math.floor(((lng + 180) / 360) * 2 ** z)));
-  const latRad = (Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI) / 180;
-  const tileY = Math.max(0, Math.min(2 ** z - 1, Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * 2 ** z)));
+async function fetchMapTileImage(lat: number, lng: number, zoomPercent: number | undefined | null, mapType: string): Promise<HTMLImageElement | null> {
+  const { baseZ: z, tileX, tileY } = getMapTileCoordinates(lat, lng, zoomPercent);
 
   const imageryUrl = `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${tileY}/${tileX}`;
   const roadUrl = `https://tile.openstreetmap.org/${z}/${tileX}/${tileY}.png`;
@@ -244,27 +243,16 @@ async function fetchMapTileImage(lat: number, lng: number, zoom: number, mapType
     const url = mapType === 'roadmap' ? roadUrl : mapType === 'terrain' ? terrainUrl : imageryUrl;
     return await loadImage(url, 4500);
   } catch {
-    // Always return a drawable fallback so an enabled map never silently disappears from the stamped photo.
-    const bundled = await loadImage('/assets/drawables/map.png', 2000).catch(() => null);
-    if (bundled) return bundled;
-    const fallback = document.createElement('canvas');
-    fallback.width = 256;
-    fallback.height = 256;
-    const context = fallback.getContext('2d');
-    if (context) {
-      context.fillStyle = '#263746';
-      context.fillRect(0, 0, 256, 256);
-      context.strokeStyle = 'rgba(255,255,255,0.24)';
-      context.lineWidth = 2;
-      for (let offset = -256; offset < 512; offset += 42) {
-        context.beginPath(); context.moveTo(offset, 0); context.lineTo(offset + 256, 256); context.stroke();
-        context.beginPath(); context.moveTo(offset, 256); context.lineTo(offset + 256, 0); context.stroke();
-      }
-      context.fillStyle = '#f04444';
-      context.beginPath(); context.arc(128, 128, 11, 0, Math.PI * 2); context.fill();
-      context.strokeStyle = '#ffffff'; context.lineWidth = 3; context.stroke();
-    }
-    return await loadImage(fallback.toDataURL('image/png'), 1000).catch(() => null);
+    // If tile loading fails in ANY case (offline, timeout, CORS, or blocked), load the Map Snapshot image
+    try {
+      const bundled = await loadImage('/assets/drawables/map.png', 2000).catch(() => null);
+      if (bundled) return bundled;
+    } catch {}
+    try {
+      const embedded = await loadImage(FALLBACK_MAP_DATA_URL, 3000).catch(() => null);
+      if (embedded) return embedded;
+    } catch {}
+    return null;
   }
 }
 
@@ -312,10 +300,10 @@ function drawClassicTemplate(
   const panelGap = Math.round(imgW * 0.02);
 
   // Dynamic user-customized font sizes and styles
-  const titleSize = Math.max(16, Math.round((loc.shortAddressSize || 18) * fontScale * 0.82));
-  const detailSize = Math.max(11, Math.round((loc.fullAddressSize || 12) * fontScale * 0.82));
-  const coordSize = detailSize; // Coordinates use the same size as all details; only short address is larger
-  const dateTimeSize = detailSize; // Date/time follows the common detail size
+  const titleSize = Math.max(14, Math.round((loc.shortAddressSize || 22) * fontScale * 0.82));
+  const detailSize = Math.max(10, Math.round((loc.fullAddressSize || 16) * fontScale * 0.82));
+  const coordSize = Math.max(10, Math.round((loc.coordinateSize || 16) * fontScale * 0.82));
+  const dateTimeSize = Math.max(10, Math.round((loc.dateTimeSize || 16) * fontScale * 0.82));
   const fontFamily = loc.fontFamily || 'SF UI Text';
   const textColor = loc.textColor || '#ffffff';
   const accentColor = loc.accentColor || '#38bdf8';
@@ -379,11 +367,12 @@ function drawClassicTemplate(
   );
   const fittedTitleSize = Math.max(12, Math.round(titleSize * densityScale));
   const fittedDetailSize = Math.max(9, Math.round(detailSize * densityScale));
-  const fittedCoordSize = fittedDetailSize;
-  const fittedDateTimeSize = fittedDetailSize;
+  const fittedCoordSize = Math.max(9, Math.round(coordSize * densityScale));
+  const fittedDateTimeSize = Math.max(9, Math.round(dateTimeSize * densityScale));
   // Re-measure with fitted fonts so the panel and full address cannot clip.
   measuredTextHeight = 0;
   ctx.font = `800 ${fittedTitleSize}px "${fontFamily}", -apple-system, sans-serif`;
+  measuredTextHeight += wrapCanvasText(ctx, titleForMeasure, textWForMeasure).length * fittedTitleSize * 1.25;
   measuredTextHeight += wrapCanvasText(ctx, titleForMeasure, textWForMeasure).length * fittedTitleSize * 1.25;
   ctx.font = `400 ${fittedDetailSize}px "${fontFamily}", -apple-system, sans-serif`;
   measuredTextHeight += wrapCanvasText(ctx, loc.fullAddress || '', textWForMeasure).length * fittedDetailSize * 1.22;
@@ -470,11 +459,15 @@ function drawClassicTemplate(
 
   // 1. Draw Map if showMap is enabled
   if (loc.showMap && mapImg) {
-    const isBundledFallbackMap = mapImg.src.includes('/assets/drawables/map.png');
+    const isBundledFallbackMap = mapImg.src.includes('/assets/drawables/map.png') || mapImg.src.startsWith('data:image/');
     ctx.save();
     roundRect(ctx, mapX, mapY, mapSize, mapSize, mapRadius);
     ctx.clip();
-    ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
+    const { subScale } = isBundledFallbackMap ? { subScale: 1.0 } : getMapTileCoordinates(loc.latitude, loc.longitude, loc.mapZoom);
+    const drawSize = mapSize * subScale;
+    const drawX = mapX + (mapSize - drawSize) / 2;
+    const drawY = mapY + (mapSize - drawSize) / 2;
+    ctx.drawImage(mapImg, drawX, drawY, drawSize, drawSize);
 
     // Directional beam / cone (strictly respects showCompass and showBlueCone)
     if (loc.showBlueCone !== false && loc.showCompass !== false) {
@@ -521,6 +514,14 @@ function drawClassicTemplate(
       ctx.textBaseline = 'bottom';
       ctx.fillText(attribution, mapX + 6, mapY + mapSize - 5, mapSize - 12);
     }
+    ctx.restore();
+
+    // Fix map snapshot into crisp rounded corner box with subtle border
+    ctx.save();
+    roundRect(ctx, mapX, mapY, mapSize, mapSize, mapRadius);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = Math.max(1, Math.round(imgW * 0.0018));
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -730,16 +731,21 @@ function drawModernTemplate(
 
   // Map on right (strictly respects showMap)
   if (loc.showMap && mapImg) {
+    const isBundledFallbackMap = mapImg.src.includes('/assets/drawables/map.png') || mapImg.src.startsWith('data:image/');
     ctx.save();
     roundRect(ctx, mapX, mapY, mapSize, mapSize, 14);
     ctx.clip();
-    ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
-    if (mapPinIcon) {
+    const { subScale } = isBundledFallbackMap ? { subScale: 1.0 } : getMapTileCoordinates(loc.latitude, loc.longitude, loc.mapZoom);
+    const drawSize = mapSize * subScale;
+    const drawX = mapX + (mapSize - drawSize) / 2;
+    const drawY = mapY + (mapSize - drawSize) / 2;
+    ctx.drawImage(mapImg, drawX, drawY, drawSize, drawSize);
+    if (mapPinIcon && !isBundledFallbackMap) {
       const pinScale = loc.markerPinScale || 1.0;
       const pW = mapSize * 0.22 * pinScale;
       ctx.drawImage(mapPinIcon, mapX + mapSize / 2 - pW / 2, mapY + mapSize / 2 - pW * 1.7 + 2, pW, pW * 1.7);
     }
-    if (loc.showGoogleLogo !== false) {
+    if (loc.showGoogleLogo !== false && !isBundledFallbackMap) {
       ctx.font = `800 ${Math.round(mapSize * 0.05)}px sans-serif`;
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';
@@ -895,16 +901,21 @@ function drawReportingTemplate(
   const mapY = cardY + headH + 10;
 
   if (loc.showMap && mapImg) {
+    const isBundledFallbackMap = mapImg.src.includes('/assets/drawables/map.png') || mapImg.src.startsWith('data:image/');
     ctx.save();
     roundRect(ctx, mapX, mapY, mapSize, mapSize, 10);
     ctx.clip();
-    ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
-    if (mapPinIcon) {
+    const { subScale } = isBundledFallbackMap ? { subScale: 1.0 } : getMapTileCoordinates(loc.latitude, loc.longitude, loc.mapZoom);
+    const drawSize = mapSize * subScale;
+    const drawX = mapX + (mapSize - drawSize) / 2;
+    const drawY = mapY + (mapSize - drawSize) / 2;
+    ctx.drawImage(mapImg, drawX, drawY, drawSize, drawSize);
+    if (mapPinIcon && !isBundledFallbackMap) {
       const pinScale = loc.markerPinScale || 1.0;
       const pW = mapSize * 0.22 * pinScale;
       ctx.drawImage(mapPinIcon, mapX + mapSize / 2 - pW / 2, mapY + mapSize / 2 - pW * 1.7 + 2, pW, pW * 1.7);
     }
-    if (loc.showGoogleLogo !== false) {
+    if (loc.showGoogleLogo !== false && !isBundledFallbackMap) {
       ctx.font = `800 ${Math.round(mapSize * 0.05)}px sans-serif`;
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';

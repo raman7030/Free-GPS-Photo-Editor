@@ -145,7 +145,7 @@ export default function App() {
     accentColor: '#38bdf8',
 
     mapType: 'hybrid',
-    mapZoom: 18,
+    mapZoom: 85,
     dateFormat: 'DD/MM/YYYY',
     timeFormat: '12_hour',
     units: 'metric',
@@ -226,7 +226,7 @@ export default function App() {
           textColor: '#ffffff',
           accentColor: '#38bdf8',
           mapType: 'satellite',
-          mapZoom: 16,
+          mapZoom: 85,
           dateFormat: 'DD/MM/YYYY',
           timeFormat: '12_hour',
           units: 'metric',
@@ -279,11 +279,21 @@ export default function App() {
   // Load saved stamp style preferences
   useEffect(() => {
     try {
+      let userDefaultLayout: Record<string, any> = {};
+      try {
+        const rawUserLayout = localStorage.getItem('gps_user_default_layout');
+        if (rawUserLayout) userDefaultLayout = JSON.parse(rawUserLayout);
+      } catch {}
+
       const savedPrefs = localStorage.getItem('gps_stamp_style_prefs');
-      if (savedPrefs) {
-        const parsed = JSON.parse(savedPrefs);
-        const needsReferenceDefaults = parsed.stampPrefsVersion !== 3;
-        const needsWeatherDefaults = parsed.stampPrefsVersion !== 4;
+      if (savedPrefs || Object.keys(userDefaultLayout).length > 0) {
+        const parsed = savedPrefs ? JSON.parse(savedPrefs) : {};
+        // Automatically migrate legacy 1-19 zoom level to 0-100 scale
+        if (typeof parsed.mapZoom === 'number' && parsed.mapZoom <= 19) {
+          parsed.mapZoom = Math.round(((parsed.mapZoom - 1) / 18) * 100);
+        }
+        const needsReferenceDefaults = parsed.stampPrefsVersion !== 3 && parsed.stampPrefsVersion !== 4 && parsed.stampPrefsVersion !== 5;
+        const needsWeatherDefaults = parsed.stampPrefsVersion !== 4 && parsed.stampPrefsVersion !== 5;
         setLocationData((prev) => ({
           ...prev,
           ...parsed,
@@ -296,7 +306,7 @@ export default function App() {
             bgOpacity: 0.5,
             bgCornerRadius: 12,
             mapType: 'hybrid' as const,
-            mapZoom: 18,
+            mapZoom: 85,
             units: 'metric' as const,
             showAltitude: false,
             showAccuracy: false,
@@ -310,6 +320,7 @@ export default function App() {
             showBrand: true,
           } : {}),
           ...(needsWeatherDefaults ? { showWeather: false } : {}),
+          ...userDefaultLayout,
           // Stored preferences must not re-enable coordinate stamps while the app
           // is still waiting for a real GPS fix or a user-selected location.
           showCoordinates: prev.shortAddress === 'Waiting for GPS location'
@@ -324,7 +335,7 @@ export default function App() {
   useEffect(() => {
     try {
       const prefsToSave = {
-        stampPrefsVersion: 4,
+        stampPrefsVersion: 5,
         bgOpacity: locationData.bgOpacity,
         bgColor: locationData.bgColor,
         bgCornerRadius: locationData.bgCornerRadius,

@@ -9,10 +9,12 @@ import {
   formatAccuracy,
   formatTemperature,
   getGmtOffsetString,
+  getMapTileCoordinates,
 } from '../utils/geo';
 import { Compass, QrCode, FileText } from 'lucide-react';
 
 import { getEffectiveBgColor } from '../utils/colorUtils';
+import { FALLBACK_MAP_DATA_URL } from '../utils/fallbackMap';
 
 interface TemplateCardProps {
   location: LocationData;
@@ -33,6 +35,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
   onOpenEditLocation,
 }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [mapLoadError, setMapLoadError] = useState<boolean>(false);
 
   useEffect(() => {
     if (template === 'qr_scan') {
@@ -43,21 +46,31 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
     }
   }, [template, location.latitude, location.longitude]);
 
-  // Leaflet map static tile calculation
-  const tileX = Math.floor(((location.longitude + 180) / 360) * Math.pow(2, Math.round(location.mapZoom || 16)));
-  const latRad = (location.latitude * Math.PI) / 180;
-  const tileY = Math.floor(
-    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) *
-      Math.pow(2, Math.round(location.mapZoom || 16))
+  // Reset map error state whenever user coordinates or map settings change
+  useEffect(() => {
+    setMapLoadError(false);
+  }, [location.latitude, location.longitude, location.mapType, location.mapZoom]);
+
+  // Leaflet map static tile calculation using 0 to 100 continuous zoom
+  const { baseZ, tileX, tileY, subScale } = getMapTileCoordinates(
+    location.latitude,
+    location.longitude,
+    location.mapZoom
   );
 
   // Default to High-Res Satellite imagery like user reference image!
-  let staticMapSrc = `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${Math.round(location.mapZoom || 16)}/${tileY}/${tileX}`;
+  let staticMapSrc = `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${baseZ}/${tileY}/${tileX}`;
   if (location.mapType === 'roadmap') {
-    staticMapSrc = `https://tile.openstreetmap.org/${Math.round(location.mapZoom || 16)}/${tileX}/${tileY}.png`;
+    staticMapSrc = `https://tile.openstreetmap.org/${baseZ}/${tileX}/${tileY}.png`;
   } else if (location.mapType === 'terrain') {
-    staticMapSrc = `https://tile.opentopomap.org/${Math.round(location.mapZoom || 16)}/${tileX}/${tileY}.png`;
+    staticMapSrc = `https://tile.opentopomap.org/${baseZ}/${tileX}/${tileY}.png`;
   }
+  const hybridOverlaySrc = location.mapType === 'hybrid'
+    ? `https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/${baseZ}/${tileY}/${tileX}`
+    : null;
+
+  const effectiveMapSrc = mapLoadError ? FALLBACK_MAP_DATA_URL : staticMapSrc;
+  const effectiveSubScale = mapLoadError ? 1.0 : subScale;
 
   const effectiveBg = getEffectiveBgColor(location.bgColor, location.bgOpacity);
   const isTranslucent = (location.bgOpacity ?? 0.95) < 0.98 && (location.bgOpacity ?? 0.95) > 0;
@@ -73,6 +86,43 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
 
   // Compass blue cone rotation angle
   const heading = location.compassHeading || 45;
+
+  // Auto-adjust scale calculation so stamp text automatically increases or decreases to fit the box
+  const fullText = location.fullAddress || '';
+  const addressLen = fullText.length;
+  const activeExtraLines =
+    (location.showCoordinates ? 1 : 0) +
+    (location.showDateTime ? 1 : 0) +
+    (location.showCaptureNote && location.captureNoteText ? 1 : 0) +
+    (location.showAltitude || location.showAccuracy || location.showWeather || location.showCompass ? 1 : 0);
+
+  // Estimate address wrap lines:
+  const mapRatio = location.mapWidthRatio || 0.30;
+  const charsPerLine = isCompact ? 28 : (location.showMap ? Math.max(22, Math.round(44 * (1 - mapRatio))) : 52);
+  const estAddrLines = Math.max(1, Math.ceil(addressLen / charsPerLine));
+  const totalTextRows = 1 + estAddrLines + activeExtraLines;
+
+  // Auto-adjust factor:
+  // If dense (6+ rows or long text), scale down to fit cleanly without overflowing.
+  // If sparse (2-3 rows), scale up to fill the text box nicely.
+  let autoFitScale = 1.0;
+  if (totalTextRows >= 6 || addressLen > 110) {
+    autoFitScale = 0.85;
+  } else if (totalTextRows === 5 || addressLen > 70) {
+    autoFitScale = 0.92;
+  } else if (totalTextRows <= 3 && addressLen < 40) {
+    autoFitScale = 1.12;
+  }
+
+  const userShortSize = location.shortAddressSize || 22;
+  const userFullSize = location.fullAddressSize || 16;
+  const userCoordSize = location.coordinateSize || 16;
+  const userDateTimeSize = location.dateTimeSize || 16;
+
+  const effectiveShortSize = isCompact ? 13 : Math.max(12, Math.round(userShortSize * autoFitScale));
+  const effectiveFullSize = isCompact ? 10 : Math.max(9, Math.round(userFullSize * autoFitScale));
+  const effectiveCoordSize = isCompact ? 9.5 : Math.max(9, Math.round(userCoordSize * autoFitScale));
+  const effectiveDateTimeSize = isCompact ? 9.5 : Math.max(9, Math.round(userDateTimeSize * autoFitScale));
 
   // 1. CLASSIC TEMPLATE - EXACT 1-TO-1 MATCH TO USER'S REFERENCE IMAGE
   if (template === 'classic') {
@@ -97,36 +147,42 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
 
         {/* Main Body: Map on Left, Location Details on Right */}
         <div className="flex gap-3 sm:gap-4 items-center w-full mt-3">
-          {/* Map Snapshot on Left */}
+          {/* Map Snapshot on Left - Fixed strictly into rounded corner box */}
           {location.showMap && (
             <div
               onClick={onOpenMapPicker}
               role={onOpenMapPicker ? 'button' : undefined}
               title={onOpenMapPicker ? 'Tap to pick location on map' : undefined}
-              className={`relative shrink-0 rounded-2xl overflow-hidden bg-neutral-900 border border-white/10 shadow-lg ${
+              className={`relative shrink-0 overflow-hidden bg-neutral-900 border border-white/20 shadow-xl ${
                 onOpenMapPicker ? 'cursor-pointer hover:ring-2 hover:ring-sky-400 active:scale-95 transition' : ''
               }`}
               style={{
-                width: isCompact ? '65px' : `${Math.round((location.mapWidthRatio || 0.32) * 100)}%`,
-                maxWidth: isCompact ? '65px' : `${Math.round((location.mapWidthRatio || 0.32) * 440)}px`,
-                minWidth: isCompact ? '65px' : '70px',
+                width: isCompact ? '65px' : `${Math.round((location.mapWidthRatio || 0.30) * 100)}%`,
+                maxWidth: isCompact ? '65px' : `${Math.round((location.mapWidthRatio || 0.30) * 440)}px`,
+                minWidth: isCompact ? '65px' : '75px',
                 aspectRatio: '1/1',
+                borderRadius: '16px',
+                isolation: 'isolate',
+                WebkitMaskImage: '-webkit-radial-gradient(white, black)',
+                maskImage: 'radial-gradient(white, black)',
+                WebkitTransform: 'translateZ(0)',
+                transform: 'translateZ(0)',
               }}
             >
               <img
-                src={staticMapSrc}
+                src={effectiveMapSrc}
                 alt="Map Snapshot"
-                className="w-full h-full object-cover scale-110"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/assets/drawables/map.png';
-                }}
+                className="w-full h-full object-cover transition-transform duration-100"
+                style={{ transform: `scale(${effectiveSubScale * 1.12})`, transformOrigin: 'center center' }}
+                onError={() => setMapLoadError(true)}
               />
-              {location.mapType === 'hybrid' && (
+              {!mapLoadError && hybridOverlaySrc && (
                 <img
-                  src={`https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/${Math.round(location.mapZoom || 16)}/${tileY}/${tileX}`}
+                  src={hybridOverlaySrc}
                   alt=""
                   aria-hidden="true"
-                  className="absolute inset-0 w-full h-full object-cover scale-110 pointer-events-none"
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none transition-transform duration-100"
+                  style={{ transform: `scale(${effectiveSubScale * 1.12})`, transformOrigin: 'center center' }}
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
               )}
@@ -147,18 +203,20 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
                 </div>
               )}
 
-              {/* Center Map Pin Marker (Classic Red Pin with Dark Dot) */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <img
-                  src={location.customMapPinUrl || '/assets/drawables/map_pin.png'}
-                  alt="Pin"
-                  className="w-4 h-7 sm:w-5 sm:h-8 drop-shadow-md -translate-y-2.5"
-                  style={{ transform: `scale(${location.markerPinScale || 1}) translateY(-10px)` }}
-                />
-              </div>
+              {/* Center Map Pin Marker (only when not showing bundled fallback which already has pin) */}
+              {!mapLoadError && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <img
+                    src={location.customMapPinUrl || '/assets/drawables/map_pin.png'}
+                    alt="Pin"
+                    className="w-4 h-7 sm:w-5 sm:h-8 drop-shadow-md -translate-y-2.5"
+                    style={{ transform: `scale(${location.markerPinScale || 1}) translateY(-10px)` }}
+                  />
+                </div>
+              )}
 
               {/* "Google" Brand Wordmark on bottom-left corner of the map */}
-              {location.showGoogleLogo !== false && (
+              {!mapLoadError && location.showGoogleLogo !== false && (
                 <div className="absolute bottom-1 left-1.5 pointer-events-none">
                   <span className="text-[10px] font-black text-white tracking-tighter drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] select-none">
                     Google
@@ -168,12 +226,12 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             </div>
           )}
 
-          {/* Right Side Text Details */}
+          {/* Right Side Text Details - Auto adjustable to fit into text box */}
           <div
             onClick={onOpenEditLocation}
             role={onOpenEditLocation ? 'button' : undefined}
             title={onOpenEditLocation ? 'Tap to edit GPS information shown on the stamp' : undefined}
-            className={`flex-1 min-w-0 flex flex-col justify-center text-left px-3 py-3 ${onOpenEditLocation ? 'cursor-pointer active:opacity-80' : ''}`}
+            className={`flex-1 min-w-0 flex flex-col justify-center text-left px-2 sm:px-3 py-1.5 ${onOpenEditLocation ? 'cursor-pointer active:opacity-80' : ''}`}
             style={{
               minHeight: '100%',
               fontFamily: location.fontFamily || 'SF UI Text, -apple-system, sans-serif',
@@ -181,22 +239,22 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             }}
           >
             {/* Line 1: Short Address + Country Flag */}
-            <div className="flex items-center gap-1.5 font-bold leading-snug">
+            <div className="flex items-center gap-1.5 font-bold leading-tight">
               <span
                 className="truncate text-white tracking-tight font-extrabold"
-                style={{ fontSize: isCompact ? '13px' : `${Math.max(16, location.shortAddressSize || 18)}px` }}
+                style={{ fontSize: `${effectiveShortSize}px` }}
               >
                 {location.shortAddress}
               </span>
               {location.showFlag !== false && (location.countryFlag || /\bindia\b/i.test(`${location.fullAddress} ${location.shortAddress}`)) && (
-                <span className="text-base sm:text-lg shrink-0">{location.countryFlag || '🇮🇳'}</span>
+                <span className="text-base sm:text-lg shrink-0 leading-none">{location.countryFlag || '🇮🇳'}</span>
               )}
             </div>
 
             {/* Line 2: Full Address (with Plus Code e.g. Fwp6+3v2) */}
             <p
               className="text-white/95 font-medium leading-snug whitespace-normal break-words mt-0.5"
-              style={{ fontSize: isCompact ? '10px' : `${location.fullAddressSize || 12}px` }}
+              style={{ fontSize: `${effectiveFullSize}px` }}
             >
               {location.fullAddress}
             </p>
@@ -205,7 +263,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             {location.showCoordinates && (
               <p
                 className="text-white/95 font-medium leading-snug truncate font-mono mt-0.5 tracking-tight"
-                style={{ fontSize: isCompact ? '9.5px' : `${location.coordinateSize || 12}px` }}
+                style={{ fontSize: `${effectiveCoordSize}px` }}
               >
                 {formatCoordinates(location.latitude, location.longitude, 'decimal')}
               </p>
@@ -215,7 +273,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             {location.showDateTime && (
               <p
                 className="text-white/95 font-medium leading-snug truncate mt-0.5"
-                style={{ fontSize: isCompact ? '9.5px' : `${location.dateTimeSize || 12}px` }}
+                style={{ fontSize: `${effectiveDateTimeSize}px` }}
               >
                 {location.dayOfWeek}, {formatDate(location.dateTime, location.dateFormat)}{' '}
                 {formatTime(location.dateTime, location.timeFormat, false)}{' '}
@@ -227,7 +285,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             {location.showCaptureNote && location.captureNoteText && (
               <p
                 className="text-white/95 font-medium leading-snug truncate mt-0.5"
-                style={{ fontSize: isCompact ? '9.5px' : `${location.dateTimeSize || 12}px` }}
+                style={{ fontSize: `${effectiveDateTimeSize}px` }}
               >
                 {location.captureNoteText}
               </p>
@@ -235,7 +293,10 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
 
             {/* Optional Line: Altitude, Accuracy, Weather, Compass */}
             {(location.showAltitude || location.showAccuracy || location.showWeather || location.showCompass) && (
-              <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[9.5px] text-sky-300 font-medium leading-snug truncate mt-0.5">
+              <div
+                className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-sky-300 font-medium leading-snug truncate mt-0.5"
+                style={{ fontSize: `${Math.max(9, Math.round(effectiveDateTimeSize * 0.9))}px` }}
+              >
                 {location.showAltitude && <span>Alt: {formatAltitude(location.altitude, location.units)}</span>}
                 {location.showAccuracy && <span>(±{formatAccuracy(location.accuracy, location.units)})</span>}
                 {location.showWeather && <span>{formatTemperature(location.weatherTemp, location.units)} {location.weatherCondition}</span>}
@@ -321,39 +382,49 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
                 onOpenMapPicker ? 'cursor-pointer hover:ring-2 hover:ring-cyan-400 active:scale-95 transition' : ''
               }`}
               style={{
-                width: isCompact ? '65px' : `${Math.round((location.mapWidthRatio || 0.32) * 100)}%`,
-                maxWidth: isCompact ? '65px' : `${Math.round((location.mapWidthRatio || 0.32) * 440)}px`,
-                minWidth: isCompact ? '65px' : '70px',
+                width: isCompact ? '65px' : `${Math.round((location.mapWidthRatio || 0.30) * 100)}%`,
+                maxWidth: isCompact ? '65px' : `${Math.round((location.mapWidthRatio || 0.30) * 440)}px`,
+                minWidth: isCompact ? '65px' : '75px',
                 aspectRatio: '1/1',
+                borderRadius: '16px',
+                isolation: 'isolate',
+                WebkitMaskImage: '-webkit-radial-gradient(white, black)',
+                maskImage: 'radial-gradient(white, black)',
+                WebkitTransform: 'translateZ(0)',
+                transform: 'translateZ(0)',
               }}
             >
               <img
-                src={staticMapSrc}
+                src={effectiveMapSrc}
                 alt="Map"
-                className="w-full h-full object-cover scale-110"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/assets/drawables/map.png';
-                }}
+                className="w-full h-full object-cover transition-transform duration-100"
+                style={{ transform: `scale(${effectiveSubScale * 1.12})`, transformOrigin: 'center center' }}
+                onError={() => setMapLoadError(true)}
               />
-              {location.mapType === 'hybrid' && (
+              {!mapLoadError && hybridOverlaySrc && (
                 <img
-                  src={`https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/${Math.round(location.mapZoom || 16)}/${tileY}/${tileX}`}
+                  src={hybridOverlaySrc}
                   alt=""
                   aria-hidden="true"
-                  className="absolute inset-0 w-full h-full object-cover scale-110 pointer-events-none"
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none transition-transform duration-100"
+                  style={{ transform: `scale(${effectiveSubScale * 1.12})`, transformOrigin: 'center center' }}
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
               )}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <img
-                  src={location.customMapPinUrl || '/assets/drawables/map_pin2.png'}
-                  alt="Pin"
-                  className="w-5 h-7 drop-shadow-md -translate-y-2"
-                />
-              </div>
-              <div className="absolute bottom-1 left-1.5 pointer-events-none">
-                <span className="text-[9px] font-bold text-white tracking-tighter drop-shadow">Google</span>
-              </div>
+              {!mapLoadError && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <img
+                    src={location.customMapPinUrl || '/assets/drawables/map_pin2.png'}
+                    alt="Pin"
+                    className="w-5 h-7 drop-shadow-md -translate-y-2"
+                  />
+                </div>
+              )}
+              {!mapLoadError && (
+                <div className="absolute bottom-1 left-1.5 pointer-events-none">
+                  <span className="text-[9px] font-bold text-white tracking-tighter drop-shadow">Google</span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -401,35 +472,45 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
                 maxWidth: isCompact ? '60px' : `${Math.round((location.mapWidthRatio || 0.28) * 440)}px`,
                 minWidth: isCompact ? '60px' : '65px',
                 aspectRatio: '1/1',
+                borderRadius: '14px',
+                isolation: 'isolate',
+                WebkitMaskImage: '-webkit-radial-gradient(white, black)',
+                maskImage: 'radial-gradient(white, black)',
+                WebkitTransform: 'translateZ(0)',
+                transform: 'translateZ(0)',
               }}
             >
               <img
-                src={staticMapSrc}
+                src={effectiveMapSrc}
                 alt="Map"
-                className="w-full h-full object-cover scale-110"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/assets/drawables/map.png';
-                }}
+                className="w-full h-full object-cover transition-transform duration-100"
+                style={{ transform: `scale(${effectiveSubScale * 1.12})`, transformOrigin: 'center center' }}
+                onError={() => setMapLoadError(true)}
               />
-              {location.mapType === 'hybrid' && (
+              {!mapLoadError && hybridOverlaySrc && (
                 <img
-                  src={`https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/${Math.round(location.mapZoom || 16)}/${tileY}/${tileX}`}
+                  src={hybridOverlaySrc}
                   alt=""
                   aria-hidden="true"
-                  className="absolute inset-0 w-full h-full object-cover scale-110 pointer-events-none"
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none transition-transform duration-100"
+                  style={{ transform: `scale(${effectiveSubScale * 1.12})`, transformOrigin: 'center center' }}
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
               )}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <img
-                  src={location.customMapPinUrl || '/assets/drawables/map_pin.png'}
-                  alt="Pin"
-                  className="w-4 h-7 drop-shadow-md -translate-y-2"
-                />
-              </div>
-              <div className="absolute bottom-1 left-1.5 pointer-events-none">
-                <span className="text-[9px] font-bold text-white tracking-tighter drop-shadow">Google</span>
-              </div>
+              {!mapLoadError && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <img
+                    src={location.customMapPinUrl || '/assets/drawables/map_pin.png'}
+                    alt="Pin"
+                    className="w-4 h-7 drop-shadow-md -translate-y-2"
+                  />
+                </div>
+              )}
+              {!mapLoadError && (
+                <div className="absolute bottom-1 left-1.5 pointer-events-none">
+                  <span className="text-[9px] font-bold text-white tracking-tighter drop-shadow">Google</span>
+                </div>
+              )}
             </div>
           )}
 
