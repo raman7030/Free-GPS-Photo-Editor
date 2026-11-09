@@ -300,10 +300,10 @@ function drawClassicTemplate(
   const panelGap = Math.round(imgW * 0.02);
 
   // Dynamic user-customized font sizes and styles
-  const titleSize = Math.max(14, Math.round((loc.shortAddressSize || 22) * fontScale * 0.82));
-  const detailSize = Math.max(10, Math.round((loc.fullAddressSize || 16) * fontScale * 0.82));
-  const coordSize = Math.max(10, Math.round((loc.coordinateSize || 16) * fontScale * 0.82));
-  const dateTimeSize = Math.max(10, Math.round((loc.dateTimeSize || 16) * fontScale * 0.82));
+  const titleSize = Math.max(Math.round(imgW * 0.042), Math.round((loc.shortAddressSize || 22) * fontScale * 0.82));
+  const detailSize = Math.max(Math.round(imgW * 0.027), Math.round((loc.fullAddressSize || 16) * fontScale * 0.82));
+  const coordSize = Math.max(Math.round(imgW * 0.027), Math.round((loc.coordinateSize || 16) * fontScale * 0.82));
+  const dateTimeSize = Math.max(Math.round(imgW * 0.027), Math.round((loc.dateTimeSize || 16) * fontScale * 0.82));
   const fontFamily = loc.fontFamily || 'SF UI Text';
   const textColor = loc.textColor || '#ffffff';
   const accentColor = loc.accentColor || '#38bdf8';
@@ -317,30 +317,30 @@ function drawClassicTemplate(
   const textPanelXForMeasure = loc.showMap ? mapMargin + mapSize + panelGap : mapMargin;
   const textPanelWForMeasure = cardW - textPanelXForMeasure - rightMargin;
   const textWForMeasure = Math.max(1, textPanelWForMeasure - Math.round(imgW * 0.04));
-  const textTopPadding = Math.round(imgW * 0.038);
-  const textBottomPadding = Math.round(imgW * 0.025);
+  const textTopPadding = Math.round(imgW * 0.022);
+  const textBottomPadding = Math.round(imgW * 0.018);
   let measuredTextHeight = 0;
 
   const resolvedFlagForMeasure = getCountryFlag(loc.countryFlag, loc.fullAddress, loc.shortAddress);
   const titleForMeasure = `${loc.shortAddress || ''}${(loc.showFlag !== false && resolvedFlagForMeasure) ? ` ${resolvedFlagForMeasure}` : ''}`;
   ctx.font = `800 ${titleSize}px "${fontFamily}", -apple-system, sans-serif`;
-  measuredTextHeight += wrapCanvasText(ctx, titleForMeasure, textWForMeasure).length * titleSize * 1.25;
+  measuredTextHeight += wrapCanvasText(ctx, titleForMeasure, textWForMeasure).length * titleSize * 1.12;
 
   ctx.font = `400 ${detailSize}px "${fontFamily}", -apple-system, sans-serif`;
-  measuredTextHeight += wrapCanvasText(ctx, loc.fullAddress || '', textWForMeasure).length * detailSize * 1.22;
+  measuredTextHeight += wrapCanvasText(ctx, loc.fullAddress || '', textWForMeasure).length * detailSize * 1.12;
 
   if (loc.showCoordinates) {
     ctx.font = `400 ${coordSize}px "${fontFamily}", -apple-system, sans-serif`;
-    measuredTextHeight += wrapCanvasText(ctx, `Lat ${loc.latitude.toFixed(6)}° Long ${loc.longitude.toFixed(6)}°`, textWForMeasure).length * coordSize * 1.22;
+    measuredTextHeight += wrapCanvasText(ctx, `Lat ${loc.latitude.toFixed(6)}° Long ${loc.longitude.toFixed(6)}°`, textWForMeasure).length * coordSize * 1.12;
   }
   if (loc.showDateTime) {
     ctx.font = `400 ${dateTimeSize}px "${fontFamily}", -apple-system, sans-serif`;
     const timeLineForMeasure = `${loc.dayOfWeek}, ${formatDate(loc.dateTime, loc.dateFormat)} ${formatTime(loc.dateTime, loc.timeFormat, false)} ${getGmtOffsetString(loc.dateTime)}`;
-    measuredTextHeight += wrapCanvasText(ctx, timeLineForMeasure, textWForMeasure).length * dateTimeSize * 1.22;
+    measuredTextHeight += wrapCanvasText(ctx, timeLineForMeasure, textWForMeasure).length * dateTimeSize * 1.12;
   }
   if (loc.showCaptureNote && loc.captureNoteText) {
     ctx.font = `400 ${dateTimeSize}px "${fontFamily}", -apple-system, sans-serif`;
-    measuredTextHeight += wrapCanvasText(ctx, loc.captureNoteText, textWForMeasure).length * dateTimeSize * 1.22;
+    measuredTextHeight += wrapCanvasText(ctx, loc.captureNoteText, textWForMeasure).length * dateTimeSize * 1.12;
   }
   if (loc.showAltitude || loc.showAccuracy || loc.showWeather || loc.showCompass) {
     const telemetryForMeasure: string[] = [];
@@ -351,7 +351,7 @@ function drawClassicTemplate(
     if (telemetryForMeasure.length) {
       const telemetrySize = Math.max(9, Math.round(dateTimeSize * 0.9));
       ctx.font = `600 ${telemetrySize}px "${fontFamily}", -apple-system, sans-serif`;
-      measuredTextHeight += wrapCanvasText(ctx, telemetryForMeasure.join('   '), textWForMeasure).length * telemetrySize * 1.2;
+      measuredTextHeight += wrapCanvasText(ctx, telemetryForMeasure.join('   '), textWForMeasure).length * telemetrySize * 1.1;
     }
   }
   // Fit typography to the actual text column height. When a map is enabled,
@@ -374,21 +374,21 @@ function drawClassicTemplate(
   // Re-measure with fitted fonts so the panel and full address cannot clip.
   measuredTextHeight = 0;
   ctx.font = `800 ${fittedTitleSize}px "${fontFamily}", -apple-system, sans-serif`;
-  measuredTextHeight += wrapCanvasText(ctx, titleForMeasure, textWForMeasure).length * fittedTitleSize * 1.25;
+  measuredTextHeight += wrapCanvasText(ctx, titleForMeasure, textWForMeasure).length * fittedTitleSize * 1.12;
   ctx.font = `400 ${fittedDetailSize}px "${fontFamily}", -apple-system, sans-serif`;
-  measuredTextHeight += wrapCanvasText(ctx, loc.fullAddress || '', textWForMeasure).length * fittedDetailSize * 1.22;
+  measuredTextHeight += wrapCanvasText(ctx, loc.fullAddress || '', textWForMeasure).length * fittedDetailSize * 1.12;
   if (loc.showCoordinates) {
     ctx.font = `400 ${fittedCoordSize}px "${fontFamily}", -apple-system, sans-serif`;
-    measuredTextHeight += wrapCanvasText(ctx, `Lat ${loc.latitude.toFixed(6)}° Long ${loc.longitude.toFixed(6)}°`, textWForMeasure).length * fittedCoordSize * 1.22;
+    measuredTextHeight += wrapCanvasText(ctx, `Lat ${loc.latitude.toFixed(6)}° Long ${loc.longitude.toFixed(6)}°`, textWForMeasure).length * fittedCoordSize * 1.12;
   }
   if (loc.showDateTime) {
     ctx.font = `400 ${fittedDateTimeSize}px "${fontFamily}", -apple-system, sans-serif`;
     const timeLineForMeasure = `${loc.dayOfWeek}, ${formatDate(loc.dateTime, loc.dateFormat)} ${formatTime(loc.dateTime, loc.timeFormat, false)} ${getGmtOffsetString(loc.dateTime)}`;
-    measuredTextHeight += wrapCanvasText(ctx, timeLineForMeasure, textWForMeasure).length * fittedDateTimeSize * 1.22;
+    measuredTextHeight += wrapCanvasText(ctx, timeLineForMeasure, textWForMeasure).length * fittedDateTimeSize * 1.12;
   }
   if (loc.showCaptureNote && loc.captureNoteText) {
     ctx.font = `400 ${fittedDateTimeSize}px "${fontFamily}", -apple-system, sans-serif`;
-    measuredTextHeight += wrapCanvasText(ctx, loc.captureNoteText, textWForMeasure).length * fittedDateTimeSize * 1.22;
+    measuredTextHeight += wrapCanvasText(ctx, loc.captureNoteText, textWForMeasure).length * fittedDateTimeSize * 1.12;
   }
   if (loc.showAltitude || loc.showAccuracy || loc.showWeather || loc.showCompass) {
     const telemetryForMeasure: string[] = [];
@@ -399,7 +399,7 @@ function drawClassicTemplate(
     if (telemetryForMeasure.length) {
       const telemetrySize = Math.max(9, Math.round(fittedDateTimeSize * 0.9));
       ctx.font = `600 ${telemetrySize}px "${fontFamily}", -apple-system, sans-serif`;
-      measuredTextHeight += wrapCanvasText(ctx, telemetryForMeasure.join('   '), textWForMeasure).length * telemetrySize * 1.2;
+      measuredTextHeight += wrapCanvasText(ctx, telemetryForMeasure.join('   '), textWForMeasure).length * telemetrySize * 1.1;
     }
   }
   const textLinesH = measuredTextHeight + textTopPadding + textBottomPadding;
@@ -546,7 +546,7 @@ function drawClassicTemplate(
   const titleLine = loc.shortAddress + flagText;
   for (const line of wrapCanvasText(ctx, titleLine, textW)) {
     ctx.fillText(line, textX, curY);
-    curY += fittedTitleSize * 1.25;
+    curY += fittedTitleSize * 1.12;
   }
 
   // Line 2: Full Address — wrap across lines so the complete address is visible.
@@ -555,7 +555,7 @@ function drawClassicTemplate(
   const addressLines = wrapCanvasText(ctx, loc.fullAddress || '', textW);
   for (const addressLine of addressLines) {
     ctx.fillText(addressLine, textX, curY);
-    curY += fittedDetailSize * 1.22;
+    curY += fittedDetailSize * 1.12;
   }
 
   // Line 3: Coordinates (strictly respects showCoordinates)
@@ -565,7 +565,7 @@ function drawClassicTemplate(
     const coordsStr = `Lat ${loc.latitude.toFixed(6)}° Long ${loc.longitude.toFixed(6)}°`;
     for (const line of wrapCanvasText(ctx, coordsStr, textW)) {
       ctx.fillText(line, textX, curY);
-      curY += fittedCoordSize * 1.22;
+      curY += fittedCoordSize * 1.12;
     }
   }
 
@@ -580,7 +580,7 @@ function drawClassicTemplate(
     const timeLine = `${dayName}, ${dateStr} ${timeStr} ${gmt}`;
     for (const line of wrapCanvasText(ctx, timeLine, textW)) {
       ctx.fillText(line, textX, curY);
-      curY += fittedDateTimeSize * 1.22;
+      curY += fittedDateTimeSize * 1.12;
     }
   }
 
@@ -590,7 +590,7 @@ function drawClassicTemplate(
     ctx.fillStyle = textColor;
     for (const line of wrapCanvasText(ctx, loc.captureNoteText, textW)) {
       ctx.fillText(line, textX, curY);
-      curY += fittedDateTimeSize * 1.22;
+      curY += fittedDateTimeSize * 1.12;
     }
   }
 
@@ -616,7 +616,7 @@ function drawClassicTemplate(
       ctx.fillStyle = accentColor;
       for (const line of wrapCanvasText(ctx, telemetryStr, textW)) {
         ctx.fillText(line, textX, curY);
-        curY += telSize * 1.2;
+        curY += telSize * 1.1;
       }
     }
   }
