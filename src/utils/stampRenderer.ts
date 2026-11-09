@@ -300,10 +300,10 @@ function drawClassicTemplate(
   const panelGap = Math.round(imgW * 0.02);
 
   // Dynamic user-customized font sizes and styles
-  const titleSize = Math.max(Math.round(imgW * 0.042), Math.round((loc.shortAddressSize || 22) * fontScale * 0.82));
-  const detailSize = Math.max(Math.round(imgW * 0.027), Math.round((loc.fullAddressSize || 16) * fontScale * 0.82));
-  const coordSize = Math.max(Math.round(imgW * 0.027), Math.round((loc.coordinateSize || 16) * fontScale * 0.82));
-  const dateTimeSize = Math.max(Math.round(imgW * 0.027), Math.round((loc.dateTimeSize || 16) * fontScale * 0.82));
+  const titleSize = Math.max(Math.round(imgW * 0.036), Math.round((loc.shortAddressSize || 22) * fontScale * 0.82));
+  const detailSize = Math.max(Math.round(imgW * 0.024), Math.round((loc.fullAddressSize || 16) * fontScale * 0.82));
+  const coordSize = Math.max(Math.round(imgW * 0.024), Math.round((loc.coordinateSize || 16) * fontScale * 0.82));
+  const dateTimeSize = Math.max(Math.round(imgW * 0.024), Math.round((loc.dateTimeSize || 16) * fontScale * 0.82));
   const fontFamily = loc.fontFamily || 'SF UI Text';
   const textColor = loc.textColor || '#ffffff';
   const accentColor = loc.accentColor || '#38bdf8';
@@ -317,8 +317,8 @@ function drawClassicTemplate(
   const textPanelXForMeasure = loc.showMap ? mapMargin + mapSize + panelGap : mapMargin;
   const textPanelWForMeasure = cardW - textPanelXForMeasure - rightMargin;
   const textWForMeasure = Math.max(1, textPanelWForMeasure - Math.round(imgW * 0.04));
-  const textTopPadding = Math.round(imgW * 0.022);
-  const textBottomPadding = Math.round(imgW * 0.018);
+  const textTopPadding = Math.max(8, Math.round(mapSize * 0.035));
+  const textBottomPadding = Math.max(8, Math.round(mapSize * 0.035));
   let measuredTextHeight = 0;
 
   const resolvedFlagForMeasure = getCountryFlag(loc.countryFlag, loc.fullAddress, loc.shortAddress);
@@ -354,24 +354,66 @@ function drawClassicTemplate(
       measuredTextHeight += wrapCanvasText(ctx, telemetryForMeasure.join('   '), textWForMeasure).length * telemetrySize * 1.1;
     }
   }
-  // Fit typography to the actual text column height. When a map is enabled,
-  // its square size defines the available vertical space beside it: a larger map
-  // gives the text column more room and a smaller map forces the type to shrink.
-  // Keep a conservative upper bound so short stamps do not become oversized.
+  // Find the largest readable font scale that fits the actual wrapped text
+  // inside the map-height panel. Recalculate wrapping at every candidate size;
+  // this prevents long addresses from overflowing after the font is enlarged.
   const availableTextHeight = loc.showMap
     ? Math.max(1, mapSize - textTopPadding - textBottomPadding)
     : imgW * 0.46 * 0.38;
-  // Use a linear fit ratio: square-root scaling still allowed the text block to
-  // exceed the map height when many optional stamp rows were enabled.
-  const densityScale = Math.min(
-    loc.showMap ? 1.65 : 1,
-    availableTextHeight / Math.max(1, measuredTextHeight)
-  );
+
+  const measureAtScale = (scale: number): number => {
+    let height = 0;
+    ctx.font = `800 ${Math.max(8, Math.round(titleSize * scale))}px "${fontFamily}", -apple-system, sans-serif`;
+    height += wrapCanvasText(ctx, titleForMeasure, textWForMeasure).length * Math.max(8, Math.round(titleSize * scale)) * 1.12;
+
+    ctx.font = `400 ${Math.max(7, Math.round(detailSize * scale))}px "${fontFamily}", -apple-system, sans-serif`;
+    height += wrapCanvasText(ctx, loc.fullAddress || '', textWForMeasure).length * Math.max(7, Math.round(detailSize * scale)) * 1.12;
+
+    if (loc.showCoordinates) {
+      const size = Math.max(7, Math.round(coordSize * scale));
+      ctx.font = `400 ${size}px "${fontFamily}", -apple-system, sans-serif`;
+      height += wrapCanvasText(ctx, `Lat ${loc.latitude.toFixed(6)}° Long ${loc.longitude.toFixed(6)}°`, textWForMeasure).length * size * 1.12;
+    }
+    if (loc.showDateTime) {
+      const size = Math.max(7, Math.round(dateTimeSize * scale));
+      const value = `${loc.dayOfWeek}, ${formatDate(loc.dateTime, loc.dateFormat)} ${formatTime(loc.dateTime, loc.timeFormat, false)} ${getGmtOffsetString(loc.dateTime)}`;
+      ctx.font = `400 ${size}px "${fontFamily}", -apple-system, sans-serif`;
+      height += wrapCanvasText(ctx, value, textWForMeasure).length * size * 1.12;
+    }
+    if (loc.showCaptureNote && loc.captureNoteText) {
+      const size = Math.max(7, Math.round(dateTimeSize * scale));
+      ctx.font = `400 ${size}px "${fontFamily}", -apple-system, sans-serif`;
+      height += wrapCanvasText(ctx, loc.captureNoteText, textWForMeasure).length * size * 1.12;
+    }
+    if (loc.showAltitude || loc.showAccuracy || loc.showWeather || loc.showCompass) {
+      const parts: string[] = [];
+      if (loc.showAltitude) parts.push(`Alt: ${formatAltitude(loc.altitude, loc.units)}`);
+      if (loc.showAccuracy && loc.accuracy > 0) parts.push(`(±${formatAccuracy(loc.accuracy, loc.units)})`);
+      if (loc.showWeather) parts.push(`${formatTemperature(loc.weatherTemp, loc.units)} ${loc.weatherCondition}`);
+      if (loc.showCompass) parts.push(`🧭 ${loc.compassHeading}° ${loc.compassDirection}`);
+      if (parts.length) {
+        const size = Math.max(9, Math.round(dateTimeSize * scale * 0.9));
+        ctx.font = `600 ${size}px "${fontFamily}", -apple-system, sans-serif`;
+        height += wrapCanvasText(ctx, parts.join('   '), textWForMeasure).length * size * 1.1;
+      }
+    }
+    return height;
+  };
+
+  let lowScale = 0.35;
+  let highScale = 3.0;
+  for (let i = 0; i < 18; i += 1) {
+    const candidate = (lowScale + highScale) / 2;
+    if (measureAtScale(candidate) <= availableTextHeight * 0.97) lowScale = candidate;
+    else highScale = candidate;
+  }
+  const densityScale = lowScale;
   const fittedTitleSize = Math.max(8, Math.round(titleSize * densityScale));
   const fittedDetailSize = Math.max(7, Math.round(detailSize * densityScale));
   const fittedCoordSize = Math.max(7, Math.round(coordSize * densityScale));
   const fittedDateTimeSize = Math.max(7, Math.round(dateTimeSize * densityScale));
-  // Re-measure with fitted fonts so the panel and full address cannot clip.
+
+  // Re-measure at the final integer font sizes; the same metrics are used while drawing.
   measuredTextHeight = 0;
   ctx.font = `800 ${fittedTitleSize}px "${fontFamily}", -apple-system, sans-serif`;
   measuredTextHeight += wrapCanvasText(ctx, titleForMeasure, textWForMeasure).length * fittedTitleSize * 1.12;
@@ -531,9 +573,9 @@ function drawClassicTemplate(
   // 2. Text Details
   const textX = panelX + Math.round(imgW * 0.02);
   const textW = Math.max(1, panelW - Math.round(imgW * 0.04));
-  let curY = panelY + (loc.showMap
-    ? Math.max(textTopPadding, (contentH - measuredTextHeight) / 2)
-    : textTopPadding);
+  // Start close to the top edge: the fitted type now uses almost the full
+  // map-height panel, leaving only a consistent optical inset.
+  let curY = panelY + textTopPadding;
 
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
