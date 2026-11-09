@@ -78,6 +78,12 @@ export const CameraView: React.FC<CameraViewProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Capture timers can outlive the render that created them. Always read the latest
+  // stamp settings/template when the shutter actually fires.
+  const locationRef = useRef(location);
+  const templateRef = useRef(template);
+  locationRef.current = location;
+  templateRef.current = template;
   // Invalidates in-flight getUserMedia requests when the camera view unmounts or switches lenses.
   const cameraStartTokenRef = useRef(0);
 
@@ -495,6 +501,10 @@ export const CameraView: React.FC<CameraViewProps> = ({
   };
 
   const executeCapture = async () => {
+    // Snapshot the latest user-selected settings once per capture so the rendered
+    // image and the metadata saved with it cannot disagree.
+    const captureLocation = { ...locationRef.current };
+    const captureTemplate = templateRef.current;
     setIsCapturing(true);
 
     try {
@@ -572,8 +582,8 @@ export const CameraView: React.FC<CameraViewProps> = ({
 
       const result = await renderStampedPhoto({
         baseImage: sourceImage,
-        location,
-        template,
+        location: captureLocation,
+        template: captureTemplate,
       });
 
       const existingFileNumbers = capturedPhotos
@@ -588,8 +598,8 @@ export const CameraView: React.FC<CameraViewProps> = ({
         originalDataUrl,
         thumbnailUrl: result.dataUrl,
         timestamp: Date.now(),
-        locationData: { ...location },
-        templateType: template,
+        locationData: captureLocation,
+        templateType: captureTemplate,
         fileName: `${nextFileNumber}.jpg`,
       };
 
