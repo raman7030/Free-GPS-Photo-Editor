@@ -618,7 +618,7 @@ export default function App() {
   };
 
   return (
-    <div className="w-screen h-screen min-h-screen bg-black text-white flex flex-col overflow-hidden relative">
+    <div className="premium-ui w-screen h-screen min-h-screen bg-black text-white flex flex-col overflow-hidden relative">
       {/* Startup permissions setup; can also be reopened from Settings. */}
       <PermissionsGate
         isOpen={isPermissionsModalOpen ? true : undefined}
