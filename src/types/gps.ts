@@ -113,6 +113,18 @@ export interface SavedLocation {
   countryFlag?: string;
 }
 
+export interface RecentLocation {
+  id: string;
+  shortAddress: string;
+  fullAddress: string;
+  plusCode?: string;
+  latitude: number;
+  longitude: number;
+  createdAt: number;
+  countryCode?: string;
+  countryFlag?: string;
+}
+
 export interface CapturedPhoto {
   id: string;
   dataUrl: string;

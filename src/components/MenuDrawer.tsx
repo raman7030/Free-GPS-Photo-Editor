@@ -11,14 +11,19 @@ import {
   ShieldCheck,
   Trash2,
   Palette,
+  History,
 } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
+import { RecentLocation } from '../types/gps';
 
 interface MenuDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onNavigate: (view: 'camera' | 'gallery' | 'saved' | 'customize' | 'map' | 'settings' | 'tutorials' | 'permissions') => void;
+  onNavigate: (view: 'camera' | 'gallery' | 'saved' | 'recent' | 'customize' | 'map' | 'settings' | 'tutorials' | 'permissions') => void;
   savedCount: number;
+  recentCount?: number;
+  recentLocations?: RecentLocation[];
+  onSelectRecentLocation?: (loc: RecentLocation) => void;
   photoCount: number;
   onResetAllData: () => void;
 }
@@ -28,6 +33,9 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
   onClose,
   onNavigate,
   savedCount,
+  recentCount = 0,
+  recentLocations = [],
+  onSelectRecentLocation,
   photoCount,
   onResetAllData,
 }) => {
@@ -50,6 +58,15 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
       bg: 'bg-amber-500/10 border-amber-500/30',
       badge: photoCount > 0 ? `${photoCount}` : null,
       badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    },
+    {
+      id: 'recent',
+      label: 'Recent Locations',
+      icon: History,
+      color: 'text-sky-400',
+      bg: 'bg-sky-500/10 border-sky-500/30',
+      badge: recentCount > 0 ? `${recentCount}` : null,
+      badgeColor: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
     },
     {
       id: 'saved',
@@ -158,6 +175,60 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
               );
             })}
           </nav>
+
+          {/* Quick Recent Locations List in Menu */}
+          {recentLocations && recentLocations.length > 0 && (
+            <div className="mt-3.5 p-3 rounded-2xl bg-zinc-900/60 border border-white/5 space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-bold text-zinc-400">
+                <span className="flex items-center gap-1.5 uppercase tracking-wider text-sky-400">
+                  <History className="w-3.5 h-3.5" />
+                  <span>Recent Places</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onNavigate('recent');
+                    onClose();
+                  }}
+                  className="text-sky-400 hover:text-sky-300 font-semibold cursor-pointer transition"
+                >
+                  View All ({recentLocations.length}) &rarr;
+                </button>
+              </div>
+              <div className="space-y-1">
+                {recentLocations.slice(0, 3).map((rLoc) => (
+                  <button
+                    key={rLoc.id}
+                    type="button"
+                    onClick={() => {
+                      if (onSelectRecentLocation) {
+                        onSelectRecentLocation(rLoc);
+                      } else {
+                        onNavigate('recent');
+                      }
+                      onClose();
+                    }}
+                    className="w-full text-left p-2 rounded-xl bg-black/40 hover:bg-sky-950/40 border border-transparent hover:border-sky-500/30 flex items-center justify-between transition cursor-pointer group"
+                  >
+                    <div className="min-w-0 pr-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs">{rLoc.countryFlag || '📍'}</span>
+                        <span className="text-xs font-semibold text-zinc-200 group-hover:text-sky-300 truncate">
+                          {rLoc.shortAddress}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-zinc-500 block truncate font-mono">
+                        {rLoc.latitude.toFixed(4)}°, {rLoc.longitude.toFixed(4)}°
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-semibold text-sky-400 opacity-80 group-hover:opacity-100 shrink-0">
+                      Apply
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Offline & Install App Card */}
           <div className="mt-4">

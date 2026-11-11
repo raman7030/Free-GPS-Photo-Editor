@@ -76,6 +76,9 @@ export const MapPickerModal: React.FC<MapPickerModalProps> = ({
   const [showLayerMenu, setShowLayerMenu] = useState<boolean>(false);
   const [appliedSuccess, setAppliedSuccess] = useState<boolean>(false);
   const [showMapHint, setShowMapHint] = useState<boolean>(true);
+  const [showSaveDialog, setShowSaveDialog] = useState<boolean>(false);
+  const [customLocName, setCustomLocName] = useState<string>('');
+  const [savedSuccessMsg, setSavedSuccessMsg] = useState<boolean>(false);
   const isOnline = useOnlineStatus();
 
   // Create crisp SVG pin icon without any default Leaflet borders or background boxes
@@ -446,6 +449,21 @@ export const MapPickerModal: React.FC<MapPickerModalProps> = ({
     setShowCoordsEditor(false);
   };
 
+  const handleQuickSaveLocation = (optionalName?: string) => {
+    const locNameToSave = (optionalName || customLocName).trim() || shortAddress || 'Saved Map Location';
+    onSaveLocationToFavorites(locNameToSave, currentLat, currentLng, shortAddress, fullAddress);
+    setSavedSuccessMsg(true);
+    setShowSaveDialog(false);
+    setTimeout(() => {
+      setSavedSuccessMsg(false);
+    }, 2800);
+  };
+
+  const handleOpenSaveDialog = () => {
+    setCustomLocName(shortAddress || '');
+    setShowSaveDialog(true);
+  };
+
   // Final apply button
   const handleApplyAndClose = () => {
     onSelectLocation(currentLat, currentLng, shortAddress, fullAddress, countryCode, countryFlag);
@@ -695,7 +713,33 @@ export const MapPickerModal: React.FC<MapPickerModalProps> = ({
           </div>
         )}
 
-        {/* Floating Quick Action Buttons on Right Side */}
+        {/* Floating Quick Action Buttons */}
+        {/* Left Side: Floating "Save this Location" button */}
+        <div className="absolute left-4 bottom-5 z-[400] flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleOpenSaveDialog}
+            className={`px-3.5 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 shadow-2xl backdrop-blur-md transition-all active:scale-95 cursor-pointer border ${
+              savedSuccessMsg
+                ? 'bg-emerald-600 text-white border-emerald-400 shadow-emerald-500/30'
+                : 'bg-neutral-900/95 hover:bg-neutral-800 text-amber-300 border-amber-400/40 shadow-black/60 hover:border-amber-300'
+            }`}
+          >
+            {savedSuccessMsg ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                <span>Saved to Favorites!</span>
+              </>
+            ) : (
+              <>
+                <BookmarkPlus className="w-4 h-4 text-amber-400" />
+                <span>Save this Location</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Right Side: Snap Pin & Center My GPS buttons */}
         <div className="absolute right-4 bottom-5 z-[400] flex flex-col gap-2.5">
           {/* Snap Pin to Screen Center button */}
           <button
@@ -736,35 +780,128 @@ export const MapPickerModal: React.FC<MapPickerModalProps> = ({
               {formatCoordinates(currentLat, currentLng, 'decimal')}
             </p>
           </div>
-
-          {/* Add to Favorites button */}
-          <button
-            onClick={() => onSaveLocationToFavorites(shortAddress, currentLat, currentLng, shortAddress, fullAddress)}
-            className="p-2.5 sm:p-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 shrink-0 transition cursor-pointer active:scale-95 shadow-sm"
-            title="Save to Favorites"
-          >
-            <BookmarkPlus className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
-          </button>
         </div>
 
-        {/* Apply Button */}
-        <button
-          onClick={handleApplyAndClose}
-          className="w-full py-3 sm:py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2 transition cursor-pointer active:scale-98"
-        >
-          {appliedSuccess ? (
-            <>
-              <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-              <span>Location Applied!</span>
-            </>
-          ) : (
-            <>
-              <Check className="w-4 h-4 stroke-[3]" />
-              <span>Apply Location to Camera Stamp</span>
-            </>
-          )}
-        </button>
+        {/* Dual Actions: Save this Location & Apply to Camera Stamp */}
+        <div className="flex flex-col sm:flex-row gap-2.5 w-full">
+          {/* Dedicated "Save this Location" Button */}
+          <button
+            type="button"
+            onClick={handleOpenSaveDialog}
+            className={`py-3 sm:py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer border active:scale-98 ${
+              savedSuccessMsg
+                ? 'bg-emerald-600 text-white border-emerald-400 shadow-lg shadow-emerald-500/20'
+                : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-400/40 hover:border-amber-300'
+            }`}
+          >
+            {savedSuccessMsg ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                <span>Saved to Favorites!</span>
+              </>
+            ) : (
+              <>
+                <BookmarkPlus className="w-4 h-4 text-amber-400" />
+                <span>Save this Location</span>
+              </>
+            )}
+          </button>
+
+          {/* Apply to Camera Stamp Button */}
+          <button
+            type="button"
+            onClick={handleApplyAndClose}
+            className="flex-1 py-3 sm:py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-sky-500/30 flex items-center justify-center gap-2 transition cursor-pointer active:scale-98"
+          >
+            {appliedSuccess ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                <span>Location Applied!</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Apply Location to Camera Stamp</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* 4. MODAL DIALOG: SAVE THIS LOCATION TO FAVORITES */}
+      {showSaveDialog && (
+        <div
+          className="fixed inset-0 z-[500] flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-fade-in"
+          onClick={() => setShowSaveDialog(false)}
+        >
+          <div
+            className="w-full max-w-md bg-neutral-900 border border-neutral-700/80 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                  <BookmarkPlus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Save this Location</h3>
+                  <p className="text-[11px] text-neutral-400">Save to your Favorites for quick 1-tap access</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSaveDialog(false)}
+                className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-neutral-400 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-semibold text-neutral-300 block mb-1">
+                Location Name / Nickname
+              </label>
+              <input
+                type="text"
+                value={customLocName}
+                onChange={(e) => setCustomLocName(e.target.value)}
+                placeholder="e.g. My Favorite Spot, Site Office, Client Building"
+                className="w-full bg-neutral-950 border border-neutral-700 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                autoFocus
+              />
+            </div>
+
+            <div className="p-3 rounded-xl bg-neutral-950/80 border border-neutral-800 space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-200">
+                <span>{countryFlag}</span>
+                <span className="truncate">{shortAddress}</span>
+              </div>
+              <p className="text-[11px] text-neutral-400 line-clamp-2">{fullAddress}</p>
+              <p className="text-[10px] font-mono text-sky-400 font-semibold pt-0.5">
+                {formatCoordinates(currentLat, currentLng, 'decimal')}
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowSaveDialog(false)}
+                className="flex-1 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickSaveLocation(customLocName)}
+                className="flex-[1.5] py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-md shadow-amber-500/20 active:scale-98"
+              >
+                <BookmarkPlus className="w-4 h-4" />
+                <span>Save to Favorites</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </div>
   );

@@ -4,6 +4,7 @@ import {
   TemplateType,
   CapturedPhoto,
   SavedLocation,
+  RecentLocation,
 } from './types/gps';
 import { CameraView } from './components/CameraView';
 import { GalleryView } from './components/GalleryView';
@@ -13,6 +14,7 @@ import { SettingsSheet } from './components/SettingsSheet';
 import { EditLocationModal } from './components/EditLocationModal';
 import { MapPickerModal } from './components/MapPickerModal';
 import { SavedLocationsModal } from './components/SavedLocationsModal';
+import { RecentLocationsModal } from './components/RecentLocationsModal';
 import { ViewPhotoModal } from './components/ViewPhotoModal';
 import { MenuDrawer } from './components/MenuDrawer';
 import { TutorialsModal } from './components/TutorialsModal';
@@ -81,6 +83,31 @@ const DEFAULT_SAVED_LOCATIONS: SavedLocation[] = [
     countryCode: 'JP',
     countryFlag: '🇯🇵',
     createdAt: Date.now() - 259200000,
+  },
+];
+
+const DEFAULT_RECENT_LOCATIONS: RecentLocation[] = [
+  {
+    id: 'recent_ref_1',
+    shortAddress: 'Manak Majra, Punjab, India',
+    fullAddress: 'Fwm6+m9x, Manak Majra, Punjab 148023, India',
+    plusCode: 'Fwm6+m9x',
+    latitude: 30.484283,
+    longitude: 75.910938,
+    countryCode: 'IN',
+    countryFlag: '🇮🇳',
+    createdAt: Date.now() - 3600000,
+  },
+  {
+    id: 'recent_ref_2',
+    shortAddress: 'Golden Gate Bridge, San Francisco',
+    fullAddress: 'QRP6+7V, Golden Gate Bridge, San Francisco, CA 94129, USA',
+    plusCode: 'QRP6+7V',
+    latitude: 37.819929,
+    longitude: -122.478255,
+    countryCode: 'US',
+    countryFlag: '🇺🇸',
+    createdAt: Date.now() - 7200000,
   },
 ];
 
@@ -248,6 +275,7 @@ export default function App() {
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [isEditLocationOpen, setIsEditLocationOpen] = useState(false);
   const [isSavedLocationsOpen, setIsSavedLocationsOpen] = useState(false);
+  const [isRecentLocationsOpen, setIsRecentLocationsOpen] = useState(false);
   const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState(false);
   const [isTutorialsOpen, setIsTutorialsOpen] = useState(false);
   const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
@@ -255,12 +283,29 @@ export default function App() {
   const [viewingPhoto, setViewingPhoto] = useState<CapturedPhoto | null>(null);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
 
+  // Recent locations list
+  const [recentLocations, setRecentLocations] = useState<RecentLocation[]>(() => {
+    try {
+      const saved = localStorage.getItem('gps_recent_locations');
+      return saved ? JSON.parse(saved) : DEFAULT_RECENT_LOCATIONS;
+    } catch {
+      return DEFAULT_RECENT_LOCATIONS;
+    }
+  });
+
   // Save locations and photos to storage
   useEffect(() => {
     try {
       localStorage.setItem('gps_saved_locations', JSON.stringify(savedLocations));
     } catch {}
   }, [savedLocations]);
+
+  // Save recent locations to storage
+  useEffect(() => {
+    try {
+      localStorage.setItem('gps_recent_locations', JSON.stringify(recentLocations));
+    } catch {}
+  }, [recentLocations]);
 
   // Load photos from IndexedDB on startup
   useEffect(() => {
@@ -477,12 +522,78 @@ export default function App() {
             weatherCondition: weather.condition,
           }));
 
+          recordRecentLocation({
+            latitude: roundedLat,
+            longitude: roundedLng,
+            shortAddress: geo.shortAddress,
+            fullAddress: geo.fullAddress,
+            plusCode: geo.plusCode,
+            countryCode: geo.countryCode,
+            countryFlag: geo.countryFlag,
+          });
+
           resolve();
         },
         () => resolve(),
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
     });
+  };
+
+  const recordRecentLocation = (loc: {
+    latitude: number;
+    longitude: number;
+    shortAddress: string;
+    fullAddress: string;
+    plusCode?: string;
+    countryCode?: string;
+    countryFlag?: string;
+  }) => {
+    if (!loc.latitude && !loc.longitude) return;
+    if (loc.shortAddress === 'Waiting for GPS location') return;
+
+    setRecentLocations((prev) => {
+      // Deduplicate: if an entry within ~20m exists, remove old one and put newest at top
+      const filtered = prev.filter(
+        (item) =>
+          Math.abs(item.latitude - loc.latitude) > 0.0002 ||
+          Math.abs(item.longitude - loc.longitude) > 0.0002
+      );
+      const newEntry: RecentLocation = {
+        id: `recent_${Date.now()}`,
+        shortAddress: loc.shortAddress,
+        fullAddress: loc.fullAddress,
+        plusCode: loc.plusCode || computePlusCode(loc.latitude, loc.longitude),
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        countryCode: loc.countryCode,
+        countryFlag: loc.countryFlag,
+        createdAt: Date.now(),
+      };
+      return [newEntry, ...filtered].slice(0, 30);
+    });
+  };
+
+  const handleSelectRecentLocation = (loc: RecentLocation) => {
+    handleUpdateLocation({
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      shortAddress: loc.shortAddress,
+      fullAddress: loc.fullAddress,
+      plusCode: loc.plusCode || computePlusCode(loc.latitude, loc.longitude),
+      countryCode: loc.countryCode || locationData.countryCode,
+      countryFlag: loc.countryFlag || locationData.countryFlag,
+      showCoordinates: true,
+    });
+    fetchWeather(loc.latitude, loc.longitude)
+      .then((w) => {
+        handleUpdateLocation({
+          weatherTemp: w.tempC,
+          weatherCondition: w.condition,
+          showWeather: w.condition !== 'Unavailable',
+        });
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -517,6 +628,17 @@ export default function App() {
   const handlePhotoCaptured = (photo: CapturedPhoto) => {
     setCapturedPhotos((prev) => [photo, ...prev]);
     savePhotoToStorage(photo).catch((err) => console.warn('Failed to save to photo storage:', err));
+    if (photo.locationData.latitude !== 0 || photo.locationData.longitude !== 0) {
+      recordRecentLocation({
+        latitude: photo.locationData.latitude,
+        longitude: photo.locationData.longitude,
+        shortAddress: photo.locationData.shortAddress,
+        fullAddress: photo.locationData.fullAddress,
+        plusCode: photo.locationData.plusCode,
+        countryCode: photo.locationData.countryCode,
+        countryFlag: photo.locationData.countryFlag,
+      });
+    }
   };
 
   const handleDeletePhoto = (id: string) => {
@@ -611,8 +733,10 @@ export default function App() {
   const handleResetAllData = async () => {
     await clearAllPhotosFromStorage();
     localStorage.removeItem('gps_saved_locations');
+    localStorage.removeItem('gps_recent_locations');
     localStorage.removeItem('gps_captured_photos');
     setSavedLocations(DEFAULT_SAVED_LOCATIONS);
+    setRecentLocations(DEFAULT_RECENT_LOCATIONS);
     setCapturedPhotos([]);
     alert('All app storage reset successfully.');
   };
@@ -709,6 +833,15 @@ export default function App() {
         onClose={() => setIsMapPickerOpen(false)}
         location={locationData}
         onSelectLocation={(lat, lng, shortAddr, fullAddr, countryCode, countryFlag) => {
+          recordRecentLocation({
+            latitude: lat,
+            longitude: lng,
+            shortAddress: shortAddr,
+            fullAddress: fullAddr,
+            plusCode: computePlusCode(lat, lng),
+            countryCode,
+            countryFlag,
+          });
           handleUpdateLocation({
             latitude: lat,
             longitude: lng,
@@ -739,6 +872,14 @@ export default function App() {
             plusCode: computePlusCode(lat, lng),
             countryFlag: locationData.countryFlag,
           });
+          recordRecentLocation({
+            latitude: lat,
+            longitude: lng,
+            shortAddress: shortAddr,
+            fullAddress: fullAddr,
+            plusCode: computePlusCode(lat, lng),
+            countryFlag: locationData.countryFlag,
+          });
           alert('📍 Location added to Saved Favorites!');
         }}
       />
@@ -749,6 +890,15 @@ export default function App() {
         onClose={() => setIsSavedLocationsOpen(false)}
         savedLocations={savedLocations}
         onSelectLocation={(loc) => {
+          recordRecentLocation({
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            shortAddress: loc.shortAddress,
+            fullAddress: loc.fullAddress,
+            plusCode: loc.plusCode || computePlusCode(loc.latitude, loc.longitude),
+            countryCode: loc.countryCode,
+            countryFlag: loc.countryFlag,
+          });
           handleUpdateLocation({
             latitude: loc.latitude,
             longitude: loc.longitude,
@@ -764,7 +914,35 @@ export default function App() {
         onAddLocation={handleAddSavedLocation}
       />
 
-      {/* 7. View Stamped Photo Fullscreen Modal */}
+      {/* 7. Recent Locations Modal */}
+      <RecentLocationsModal
+        isOpen={isRecentLocationsOpen}
+        onClose={() => setIsRecentLocationsOpen(false)}
+        recentLocations={recentLocations}
+        onSelectLocation={(loc) => {
+          handleSelectRecentLocation(loc);
+          setIsRecentLocationsOpen(false);
+        }}
+        onDeleteRecent={(id) => {
+          setRecentLocations((prev) => prev.filter((r) => r.id !== id));
+        }}
+        onClearAll={() => {
+          setRecentLocations([]);
+        }}
+        onSaveToFavorites={(name, lat, lng, shortAddr, fullAddr) => {
+          handleAddSavedLocation({
+            name,
+            latitude: lat,
+            longitude: lng,
+            shortAddress: shortAddr,
+            fullAddress: fullAddr,
+            plusCode: computePlusCode(lat, lng),
+            countryFlag: locationData.countryFlag,
+          });
+        }}
+      />
+
+      {/* 8. View Stamped Photo Fullscreen Modal */}
       <ViewPhotoModal
         photo={viewingPhoto}
         onClose={() => setViewingPhoto(null)}
@@ -775,7 +953,7 @@ export default function App() {
         onEditStamp={handleEditPhotoStamp}
       />
 
-      {/* 8. Menu Drawer */}
+      {/* 9. Menu Drawer */}
       <MenuDrawer
         isOpen={isMenuDrawerOpen}
         onClose={() => setIsMenuDrawerOpen(false)}
@@ -783,6 +961,7 @@ export default function App() {
           if (view === 'camera') setActiveView('camera');
           else if (view === 'gallery') setActiveView('gallery');
           else if (view === 'saved') setIsSavedLocationsOpen(true);
+          else if (view === 'recent') setIsRecentLocationsOpen(true);
           else if (view === 'customize') setIsCustomizeModalOpen(true);
           else if (view === 'map') setIsMapPickerOpen(true);
           else if (view === 'settings') setIsSettingsSheetOpen(true);
@@ -790,11 +969,17 @@ export default function App() {
           else if (view === 'permissions') setIsPermissionsModalOpen(true);
         }}
         savedCount={savedLocations.length}
+        recentCount={recentLocations.length}
+        recentLocations={recentLocations}
+        onSelectRecentLocation={(loc) => {
+          handleSelectRecentLocation(loc);
+          setIsMenuDrawerOpen(false);
+        }}
         photoCount={capturedPhotos.length}
         onResetAllData={handleResetAllData}
       />
 
-      {/* 9. Video Tutorials & Help Modal */}
+      {/* 10. Video Tutorials & Help Modal */}
       <TutorialsModal
         isOpen={isTutorialsOpen}
         onClose={() => setIsTutorialsOpen(false)}
